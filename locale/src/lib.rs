@@ -1,3 +1,4 @@
+pub mod error;
 pub mod locale;
 pub use locale::{AVAILABLE_LOCALES, Locale};
 

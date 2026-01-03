@@ -10,6 +10,7 @@ strum = ["dep:strum", "dep:strum_macros"]
 
 
 [dependencies]
+thiserror = { version = "2.0.17" }
 strum = { version = "0.27.2", optional = true }
 strum_macros = { version = "0.27.2", optional = true }
 

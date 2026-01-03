@@ -1,6 +1,8 @@
 // Auto-generated. DO NOT EDIT.
 use std::str::FromStr;
 use std::fmt;
+use crate::error::LocaleError;
+
 #[cfg(feature = "strum")]
 use strum_macros::EnumIter;
 
@@ -776,7 +778,6 @@ pub const AVAILABLE_LOCALES: [&str; 766] = [
 
 #[cfg_attr(feature = "strum", derive(EnumIter))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-
 #[allow(non_camel_case_types)]
 pub enum Locale {
     aa,
@@ -2327,7 +2328,7 @@ impl fmt::Display for Locale {
 }
 
 impl FromStr for Locale {
-    type Err = String;
+    type Err = LocaleError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "aa" => Ok(Locale::aa),
@@ -3096,8 +3097,15 @@ impl FromStr for Locale {
             "zh-Hant-MY" => Ok(Locale::zh_Hant_MY),
             "zh-Latn" => Ok(Locale::zh_Latn),
             "zu" => Ok(Locale::zu),
-            _ => Err(format!("Unknown locale: {}", s)),
+            _ => Err(LocaleError::Unknown(s.to_string())),
         }
+    }
+}
+
+impl TryFrom<&str> for Locale {
+    type Error = LocaleError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
     }
 }
 
@@ -3107,15 +3115,14 @@ impl From<Locale> for &'static str {
     }
 }
 
-impl Into<String> for Locale {
-    fn into(self) -> String {
-        self.as_str().to_string()
+impl From<Locale> for String {
+    fn from(loc: Locale) -> Self {
+        loc.as_str().to_string()
     }
 }
 
-impl Into<&str> for &'static Locale {
-    fn into(self) -> &'static str {
-        self.as_str()
+impl From<&Locale> for &'static str {
+    fn from(loc: &Locale) -> Self {
+        loc.as_str()
     }
 }
-
