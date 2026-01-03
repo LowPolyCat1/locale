@@ -5,13 +5,35 @@ use zip::ZipArchive;
 
 use crate::sanitize_variant;
 
-fn parse_grouping_size(pattern: &str) -> usize {
+fn detect_all_groupings(pattern: &str) -> Vec<usize> {
     let integer_part = pattern.split('.').next().unwrap_or(pattern);
-    if let Some(last_comma) = integer_part.rfind(',') {
-        return integer_part.len() - last_comma - 1;
+    let clean: String = integer_part
+        .chars()
+        .filter(|&c| c == '#' || c == '0' || c == ',')
+        .collect();
+
+    let parts: Vec<&str> = clean.split(',').collect();
+    if parts.len() <= 1 {
+        return vec![0];
     }
-    3
+
+    let mut sizes = Vec::new();
+    if let Some(primary) = parts.last() {
+        sizes.push(primary.len());
+    }
+    if parts.len() > 2 {
+        if let Some(secondary) = parts.get(parts.len() - 2) {
+            sizes.push(secondary.len());
+        }
+    }
+
+    if sizes.len() > 1 && sizes[0] == sizes[1] {
+        sizes.truncate(1);
+    }
+
+    sizes
 }
+
 pub fn run(
     zip_buffer: Vec<u8>,
     _asset_name: &str,
@@ -43,24 +65,22 @@ pub fn run(
         let var = sanitize_variant(name);
         let mut decimal = ".".to_string();
         let mut group = ",".to_string();
-        let mut group_size = 3;
+        let mut grouping_sizes = vec![3];
 
         let json_path = format!("cldr-numbers-full/main/{}/numbers.json", name);
         if let Ok(mut file) = archive.by_name(&json_path) {
-            if let Ok(json) = serde_json::from_reader::<_, Value>(&mut file) {
-                let numbers = &json["main"][name]["numbers"];
-                let symbols = &numbers["symbols-numberSystem-latn"];
-                if let Some(d) = symbols["decimal"].as_str() {
-                    decimal = d.to_string();
-                }
-                if let Some(g) = symbols["group"].as_str() {
-                    group = g.to_string();
-                }
-                if let Some(pattern) =
-                    numbers["decimalFormats-numberSystem-latn"]["standard"].as_str()
-                {
-                    group_size = parse_grouping_size(pattern);
-                }
+            let json: Value = serde_json::from_reader(&mut file)?;
+            let numbers = &json["main"][name]["numbers"];
+            let symbols = &numbers["symbols-numberSystem-latn"];
+            if let Some(d) = symbols["decimal"].as_str() {
+                decimal = d.to_string();
+            }
+            if let Some(g) = symbols["group"].as_str() {
+                group = g.to_string();
+            }
+            if let Some(pattern) = numbers["decimalFormats-numberSystem-latn"]["standard"].as_str()
+            {
+                grouping_sizes = detect_all_groupings(pattern);
             }
         }
 
@@ -69,7 +89,10 @@ pub fn run(
             var, decimal
         ));
         grp_sep_arms.push_str(&format!("            Locale::{} => \"{}\",\n", var, group));
-        grp_size_arms.push_str(&format!("            Locale::{} => {},\n", var, group_size));
+        grp_size_arms.push_str(&format!(
+            "            Locale::{} => &{:?},\n",
+            var, grouping_sizes
+        ));
     }
 
     let code = format!(
@@ -78,18 +101,15 @@ use crate::locale::Locale;
 
 impl Locale {{
     pub fn decimal_separator(&self) -> &'static str {{
-        match self {{
-{dec_sep_arms}        }}
+        match self {{ {dec_sep_arms} }}
     }}
 
     pub fn grouping_separator(&self) -> &'static str {{
-        match self {{
-{grp_sep_arms}        }}
+        match self {{ {grp_sep_arms} }}
     }}
 
-    pub fn grouping_size(&self) -> usize {{
-        match self {{
-{grp_size_arms}        }}
+    pub fn grouping_sizes(&self) -> &'static [usize] {{
+        match self {{ {grp_size_arms} }}
     }}
 }}
 
@@ -97,61 +117,94 @@ pub trait ToFormattedString {{
     fn to_formatted_string(&self, locale: &Locale) -> String;
 }}
 
-macro_rules! impl_int_format {{
+fn _format_int_str(numeric_part: &str, locale: &Locale) -> String {{
+    let sizes = locale.grouping_sizes();
+    let separator = locale.grouping_separator();
+
+    if sizes.is_empty() || sizes[0] == 0 || numeric_part.len() <= sizes[0] {{
+        return numeric_part.to_string();
+    }}
+
+    let mut result = Vec::with_capacity(numeric_part.len() + 8);
+    let bytes = numeric_part.as_bytes();
+
+    let mut i = 0;         // Digits placed in CURRENT group
+    let mut size_idx = 0;   // Current index in the sizes array
+
+    for &byte in bytes.iter().rev() {{
+        let current_target_size = sizes[size_idx];
+
+        // If the current group is full, insert separator and move to next size
+        if i == current_target_size {{
+            for b in separator.as_bytes().iter().rev() {{
+                result.push(*b);
+        }}
+            i = 0;
+            if size_idx < sizes.len() - 1 {{
+                size_idx += 1;
+        }}
+    }}
+
+        result.push(byte);
+        i += 1;
+    }}
+
+    result.reverse();
+    unsafe {{ String::from_utf8_unchecked(result) }}
+}}
+
+
+macro_rules! impl_int {{
     ($($t:ty),*) => {{
         $(
             impl ToFormattedString for $t {{
                 fn to_formatted_string(&self, locale: &Locale) -> String {{
                     let s = self.to_string();
-                    let is_negative = s.starts_with('-');
-                    let numeric_part = if is_negative {{ &s[1..] }} else {{ &s }};
-
-                    let group_size = locale.grouping_size();
-                    let separator = locale.grouping_separator();
-
-                    if group_size == 0 {{ return s; }}
-
-                    let mut result = String::with_capacity(s.len() + (s.len() / group_size));
-                    if is_negative {{ result.push('-'); }}
-
-                    let bytes = numeric_part.as_bytes();
-                    let len = bytes.len();
-
-                    for (i, byte) in bytes.iter().enumerate() {{
-                        result.push(*byte as char);
-                        let remaining = len - i - 1;
-                        if remaining > 0 && remaining % group_size == 0 {{
-                            result.push_str(separator);
-                        }}
+                    if s.starts_with('-') {{
+                        format!("-{{}}", _format_int_str(&s[1..], locale))
+                    }} else {{
+                        _format_int_str(&s, locale)
                     }}
-                    result
                 }}
             }}
         )*
     }};
 }}
 
-impl_int_format!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_int!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
-#[cfg(test)]
-mod tests {{
-    use super::*;
+macro_rules! impl_float {{
+    ($($t:ty),*) => {{
+        $(
+            impl ToFormattedString for $t {{
+                fn to_formatted_string(&self, locale: &Locale) -> String {{
+                    if self.is_nan() {{ return "NaN".to_string(); }}
+                    if self.is_infinite() {{ return "inf".to_string(); }}
 
-    #[test]
-    fn test_num_formatting() {{
-        // Test English (Standard 3-digit grouping)
-        assert_eq!(1000000u32.to_formatted_string(&Locale::en), "1,000,000");
-
-        // Test locales that might use different separators (like French space or German dot)
-        let thousand = 1000i32;
-        let large = 1234567i32;
-
-        assert_eq!(thousand.to_formatted_string(&Locale::en), "1,000");
-
-        // Negative test
-        assert_eq!((-1000i32).to_formatted_string(&Locale::en), "-1,000");
-    }}
+                    let s = format!("{{}}", self);
+                    if let Some(pos) = s.find('.') {{
+                        let (int_part, frac_part) = s.split_at(pos);
+                        let formatted_int = if int_part.starts_with('-') {{
+                            format!("-{{}}", _format_int_str(&int_part[1..], locale))
+                        }} else {{
+                            _format_int_str(int_part, locale)
+                        }};
+                        // frac_part[1..] skips the original '.'
+                        format!("{{}}{{}}{{}}", formatted_int, locale.decimal_separator(), &frac_part[1..])
+                    }} else {{
+                        if s.starts_with('-') {{
+                            format!("-{{}}", _format_int_str(&s[1..], locale))
+                        }} else {{
+                            _format_int_str(&s, locale)
+                        }}
+                    }}
+                }}
+            }}
+        )*
+    }};
 }}
+
+impl_float!(f32, f64);
 "#,
         dec_sep_arms = dec_sep_arms,
         grp_sep_arms = grp_sep_arms,

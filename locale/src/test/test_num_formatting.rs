@@ -1,54 +1,96 @@
-use crate::{Locale, num_formats::ToFormattedString};
+use crate::locale::Locale;
+use crate::num_formats::ToFormattedString;
 
 #[test]
-fn test_standard_formatting() {
-    let val = 1000000u32;
-
-    // US English: 1,000,000
-    assert_eq!(val.to_formatted_string(&Locale::en), "1,000,000");
-
-    // German: 1.000.000
-    assert_eq!(val.to_formatted_string(&Locale::de), "1.000.000");
+fn test_u8_primitive() {
+    assert_eq!(255u8.to_formatted_string(&Locale::en), "255");
 }
 
 #[test]
-fn test_negative_numbers() {
-    let val = -1234567i32;
-
-    // US English: -1,234,567
-    assert_eq!(val.to_formatted_string(&Locale::en), "-1,234,567");
-
-    // French uses non-breaking space often: 1 234 567 (verify exact CLDR char)
-    let formatted_fr = val.to_formatted_string(&Locale::fr);
-    assert!(formatted_fr.contains("1") && formatted_fr.contains("234"));
+fn test_i8_negative() {
+    assert_eq!((-128i8).to_formatted_string(&Locale::en), "-128");
 }
 
 #[test]
-fn test_small_numbers() {
-    let val = 999;
-    // No separator should be added
-    assert_eq!(val.to_formatted_string(&Locale::en), "999");
+fn test_u128_large() {
+    let val: u128 = 1_000_000_000_000_000_000;
+    assert_eq!(
+        val.to_formatted_string(&Locale::en),
+        "1,000,000,000,000,000,000"
+    );
 }
 
 #[test]
-fn test_boundary_sizes() {
-    let val = 1000;
-    assert_eq!(val.to_formatted_string(&Locale::en), "1,000");
+fn test_isize_boundaries() {
+    assert_eq!(0isize.to_formatted_string(&Locale::en), "0");
 }
 
 #[test]
-fn test_custom_grouping_logic() {
-    // Some locales might have grouping size 4 or others
-    // This test ensures the generated size is respected
-    let val = 1000000;
-    let loc = Locale::en;
-    let size = loc.grouping_size();
+fn test_f32_standard() {
+    let val: f32 = 1234.5;
+    // format!() for f32 1234.5 usually gives "1234.5"
+    assert_eq!(val.to_formatted_string(&Locale::en), "1,234.5");
+}
 
-    let formatted = val.to_formatted_string(&loc);
-    let separator_count = formatted.chars().filter(|c| c == &',').count();
+#[test]
+fn test_f64_german_separator() {
+    // German uses ',' for decimal and '.' for grouping
+    let val: f64 = 1234.56;
+    assert_eq!(val.to_formatted_string(&Locale::de), "1.234,56");
+}
 
-    // For 1,000,000 and size 3, we expect 2 commas
-    if size == 3 {
-        assert_eq!(separator_count, 2);
-    }
+#[test]
+fn test_f64_negative() {
+    let val: f64 = -10.5;
+    assert_eq!(val.to_formatted_string(&Locale::en), "-10.5");
+}
+
+#[test]
+fn test_grouping_en_us() {
+    // Standard 3-digit grouping
+    assert_eq!(1000000.to_formatted_string(&Locale::en), "1,000,000");
+}
+
+#[test]
+fn test_grouping_hi_in() {
+    // Indian system: 1,00,00,000 (3-2-2)
+    let val = 10000000;
+    assert_eq!(val.to_formatted_string(&Locale::hi), "1,00,00,000");
+}
+
+#[test]
+fn test_grouping_boundary_exact() {
+    // Test exactly at the first grouping boundary
+    assert_eq!(100.to_formatted_string(&Locale::en), "100");
+    assert_eq!(1000.to_formatted_string(&Locale::en), "1,000");
+}
+
+#[test]
+fn test_separator_french_space() {
+    let res = 1000.to_formatted_string(&Locale::fr);
+    // CLDR often uses U+00A0 (Non-breaking space) or U+202F (Narrow NBSP)
+    let has_space = res
+        .chars()
+        .any(|c| c.is_whitespace() || c == '\u{a0}' || c == '\u{202f}');
+    assert!(has_space, "French result '{}' should contain a space", res);
+}
+
+#[test]
+fn test_separator_swiss_apostrophe() {
+    // Some Swiss variations use '
+    // Note: Depends on your specific CLDR version/variant
+    let res = 1000.to_formatted_string(&Locale::gsw);
+    assert!(res.contains('\'') || res.contains(' '));
+}
+
+#[test]
+fn test_sign_is_not_grouped() {
+    // Ensure the minus sign doesn't accidentally get treated as a digit
+    assert_eq!((-10000).to_formatted_string(&Locale::en), "-10,000");
+}
+
+#[test]
+fn test_zero_handling() {
+    assert_eq!(0.to_formatted_string(&Locale::en), "0");
+    assert_eq!(0.0f64.to_formatted_string(&Locale::en), "0");
 }
