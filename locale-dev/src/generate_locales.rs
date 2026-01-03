@@ -9,6 +9,7 @@ pub fn run(
     asset_name: &str,
     output_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("generating locales");
     let mut archive = ZipArchive::new(Cursor::new(zip_buffer))?;
     let mut locales = Vec::new();
 
@@ -47,6 +48,8 @@ pub fn run(
         r#"// Auto-generated. DO NOT EDIT.
 use std::str::FromStr;
 use std::fmt;
+use crate::error::LocaleError;
+
 #[cfg(feature = "strum")]
 use strum_macros::EnumIter;
 
@@ -56,7 +59,6 @@ pub const AVAILABLE_LOCALES: [&str; {count}] = [
 
 #[cfg_attr(feature = "strum", derive(EnumIter))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-
 #[allow(non_camel_case_types)]
 pub enum Locale {{
 {variants}}}
@@ -75,11 +77,18 @@ impl fmt::Display for Locale {{
 }}
 
 impl FromStr for Locale {{
-    type Err = String;
+    type Err = LocaleError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
         match s {{
-{from_str}            _ => Err(format!("Unknown locale: {{}}", s)),
+{from_str}            _ => Err(LocaleError::Unknown(s.to_string())),
         }}
+    }}
+}}
+
+impl TryFrom<&str> for Locale {{
+    type Error = LocaleError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {{
+        Self::from_str(value)
     }}
 }}
 
@@ -89,18 +98,17 @@ impl From<Locale> for &'static str {{
     }}
 }}
 
-impl Into<String> for Locale {{
-    fn into(self) -> String {{
-        self.as_str().to_string()
+impl From<Locale> for String {{
+    fn from(loc: Locale) -> Self {{
+        loc.as_str().to_string()
     }}
 }}
 
-impl Into<&str> for &'static Locale {{
-    fn into(self) -> &'static str {{
-        self.as_str()
+impl From<&Locale> for &'static str {{
+    fn from(loc: &Locale) -> Self {{
+        loc.as_str()
     }}
 }}
-
 "#,
         asset_name = asset_name,
         count = locales.len(),
@@ -111,6 +119,6 @@ impl Into<&str> for &'static Locale {{
     );
 
     fs::write(output_path, code)?;
-    println!("Generated {} locales.", locales.len());
+    tracing::info!("Generated {} locales.", locales.len());
     Ok(())
 }
