@@ -7,6 +7,7 @@ edition = "2024"
 [features]
 rebuild = []
 strum = ["dep:strum", "dep:strum_macros"]
+nums = []
 
 
 [dependencies]
