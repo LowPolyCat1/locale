@@ -94,3 +94,14 @@ fn test_zero_handling() {
     assert_eq!(0.to_formatted_string(&Locale::en), "0");
     assert_eq!(0.0f64.to_formatted_string(&Locale::en), "0");
 }
+
+#[test]
+fn arabic_numbers() {
+    // ar_EG (Egypt) or ar_SA (Saudi Arabia) typically default to 'arab' digits
+    assert_eq!(0.to_formatted_string(&Locale::ar_EG), "٠");
+    assert_eq!(123.to_formatted_string(&Locale::ar_EG), "١٢٣");
+    assert_eq!(
+        0123456789.to_formatted_string(&Locale::ar_EG),
+        "١٢٣٬٤٥٦٬٧٨٩"
+    )
+}
