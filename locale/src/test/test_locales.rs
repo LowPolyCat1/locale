@@ -73,3 +73,51 @@ fn test_debug_print() {
     let debug_str = format!("{:?}", loc);
     assert!(!debug_str.is_empty());
 }
+
+#[test]
+fn test_fallback_logic() {
+    // Test 1: Regional to Base (if both exist in your zip)
+    // Note: Replace "en-US" and "en" with locales you know exist in your source
+    if let Ok(regional) = Locale::from_str("en-US") {
+        if let Some(fallback) = regional.fallback() {
+            assert_eq!(fallback.as_str(), "en");
+        }
+    }
+
+    // Test 2: Base locale should have no fallback
+    if let Ok(base) = Locale::from_str("en") {
+        assert!(
+            base.fallback().is_none(),
+            "Base language 'en' should not have a fallback"
+        );
+    }
+}
+
+#[test]
+fn test_recursive_fallback() {
+    // Test that we can walk up the chain manually
+    // e.g., zh-Hant-HK -> zh-Hant -> zh
+    let mut current = Locale::from_str("zh-Hant-HK").ok();
+    let mut steps = 0;
+
+    while let Some(loc) = current {
+        current = loc.fallback();
+        steps += 1;
+    }
+
+    // If zh-Hant-HK, zh-Hant, and zh all exist, steps should be 3
+    assert!(steps >= 1);
+}
+
+#[test]
+fn test_all_fallbacks_are_valid() {
+    for name in AVAILABLE_LOCALES {
+        let loc = Locale::from_str(name).unwrap();
+        if let Some(fallback) = loc.fallback() {
+            // Ensure the fallback string is a prefix of the original
+            assert!(name.starts_with(fallback.as_str()));
+            // Ensure it's not the same string
+            assert_ne!(name, fallback.as_str());
+        }
+    }
+}

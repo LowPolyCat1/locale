@@ -32,16 +32,37 @@ pub fn run(
     let mut names = String::new();
     let mut from_str = String::new();
     let mut to_str = String::new();
+    let mut fallbacks = String::new();
 
     for name in &locales {
         let var = sanitize_variant(name);
+
         variants.push_str(&format!("    {},\n", var));
         names.push_str(&format!("    \"{}\",\n", name));
+
         from_str.push_str(&format!(
             "            \"{}\" => Ok(Locale::{}),\n",
             name, var
         ));
+
         to_str.push_str(&format!("            Locale::{} => \"{}\",\n", var, name));
+
+        let mut fallback_found = false;
+        if let Some(idx) = name.rfind('-') {
+            let parent_name = &name[..idx];
+            if locales.contains(&parent_name.to_string()) {
+                let parent_var = sanitize_variant(parent_name);
+                fallbacks.push_str(&format!(
+                    "            Locale::{} => Some(Locale::{}),\n",
+                    var, parent_var
+                ));
+                fallback_found = true;
+            }
+        }
+
+        if !fallback_found {
+            fallbacks.push_str(&format!("            Locale::{} => None,\n", var));
+        }
     }
 
     let code = format!(
@@ -64,9 +85,17 @@ pub enum Locale {{
 {variants}}}
 
 impl Locale {{
+    /// Returns the string representation of the locale.
     pub fn as_str(&self) -> &'static str {{
         match self {{
 {to_str}        }}
+    }}
+
+    /// Returns the next best fallback locale by stripping subtags.
+    /// Example: Locale::en_US.fallback() -> Some(Locale::en)
+    pub fn fallback(&self) -> Option<Self> {{
+        match self {{
+{fallbacks}        }}
     }}
 }}
 
@@ -115,7 +144,8 @@ impl From<&Locale> for &'static str {{
         names = names,
         variants = variants,
         from_str = from_str,
-        to_str = to_str
+        to_str = to_str,
+        fallbacks = fallbacks
     );
 
     fs::write(output_path, code)?;
