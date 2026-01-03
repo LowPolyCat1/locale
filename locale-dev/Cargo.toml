@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+thiserror = { version = "2.0.17" }
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 zip = "0.6"
 serde = { version = "1.0", features = ["derive"] }
