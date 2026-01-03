@@ -3863,7 +3863,7 @@ pub trait ToFormattedString {
 }
 
 /// Translates ASCII digits 0-9 into the locale's native numbering system.
-fn _translate_digits(input: String, locale: &Locale) -> String {
+pub(crate) fn _translate_digits(input: String, locale: &Locale) -> String {
     match locale.digits() {
         Some(d) => input
             .chars()

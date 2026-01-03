@@ -3,3 +3,6 @@ mod test_locales;
 mod test_num_formatting;
 #[cfg(feature = "strum")]
 mod test_strum;
+
+#[cfg(feature = "datetime")]
+mod test_datetime_formatting;

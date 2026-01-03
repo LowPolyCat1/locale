@@ -1,5 +1,5 @@
 [package]
-name = "locale"
+name = "locale-rs"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,6 +7,7 @@ edition = "2024"
 [features]
 rebuild = []
 strum = ["dep:strum", "dep:strum_macros"]
+datetime = []
 nums = []
 
 
@@ -15,5 +16,11 @@ thiserror = { version = "2.0.17" }
 strum = { version = "0.27.2", optional = true }
 strum_macros = { version = "0.27.2", optional = true }
 
+[dev-dependencies]
+criterion = { version = "*" }
 
 [build-dependencies]
+
+[[bench]]
+name = "locale_bench"
+harness = false
