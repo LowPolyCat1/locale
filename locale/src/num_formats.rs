@@ -3,7 +3,8 @@ use crate::locale::Locale;
 
 impl Locale {
     pub fn decimal_separator(&self) -> &'static str {
-        match self {             Locale::aa => ".",
+        match self {
+            Locale::aa => ".",
             Locale::aa_DJ => ".",
             Locale::aa_ER => ".",
             Locale::ab => ".",
@@ -769,11 +770,12 @@ impl Locale {
             Locale::zh_Hant_MY => ".",
             Locale::zh_Latn => ".",
             Locale::zu => ".",
- }
+        }
     }
 
     pub fn grouping_separator(&self) -> &'static str {
-        match self {             Locale::aa => ",",
+        match self {
+            Locale::aa => ",",
             Locale::aa_DJ => ",",
             Locale::aa_ER => ",",
             Locale::ab => ",",
@@ -1539,11 +1541,12 @@ impl Locale {
             Locale::zh_Hant_MY => ",",
             Locale::zh_Latn => ",",
             Locale::zu => ",",
- }
+        }
     }
 
     pub fn grouping_sizes(&self) -> &'static [usize] {
-        match self {             Locale::aa => &[3],
+        match self {
+            Locale::aa => &[3],
             Locale::aa_DJ => &[3],
             Locale::aa_ER => &[3],
             Locale::ab => &[3],
@@ -2309,11 +2312,12 @@ impl Locale {
             Locale::zh_Hant_MY => &[3],
             Locale::zh_Latn => &[3],
             Locale::zu => &[3],
- }
+        }
     }
 
     pub fn minus_sign(&self) -> &'static str {
-        match self {             Locale::aa => "-",
+        match self {
+            Locale::aa => "-",
             Locale::aa_DJ => "-",
             Locale::aa_ER => "-",
             Locale::ab => "-",
@@ -3079,11 +3083,12 @@ impl Locale {
             Locale::zh_Hant_MY => "-",
             Locale::zh_Latn => "-",
             Locale::zu => "-",
- }
+        }
     }
 
     pub fn digits(&self) -> Option<[char; 10]> {
-        match self {             Locale::aa => None,
+        match self {
+            Locale::aa => None,
             Locale::aa_DJ => None,
             Locale::aa_ER => None,
             Locale::ab => None,
@@ -3849,7 +3854,7 @@ impl Locale {
             Locale::zh_Hant_MY => None,
             Locale::zh_Latn => None,
             Locale::zu => None,
- }
+        }
     }
 }
 
@@ -3860,14 +3865,17 @@ pub trait ToFormattedString {
 /// Translates ASCII digits 0-9 into the locale's native numbering system.
 fn _translate_digits(input: String, locale: &Locale) -> String {
     match locale.digits() {
-        Some(d) => input.chars().map(|c| {
-            if c.is_ascii_digit() {
-                let idx = (c as u8 - b'0') as usize;
-                d[idx]
-            } else {
-                c
-            }
-        }).collect(),
+        Some(d) => input
+            .chars()
+            .map(|c| {
+                if c.is_ascii_digit() {
+                    let idx = (c as u8 - b'0') as usize;
+                    d[idx]
+                } else {
+                    c
+                }
+            })
+            .collect(),
         None => input,
     }
 }
@@ -3930,7 +3938,9 @@ macro_rules! impl_int {
     };
 }
 
-impl_int!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
+impl_int!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+);
 
 macro_rules! impl_float {
     ($($t:ty),*) => {

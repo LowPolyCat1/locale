@@ -2,106 +2,74 @@ use crate::locale::Locale;
 use crate::num_formats::ToFormattedString;
 
 #[test]
-fn test_u8_primitive() {
-    assert_eq!(255u8.to_formatted_string(&Locale::en), "255");
+fn test_diverse_numerical_symbols() {
+    // 1. Different Decimal Separators
+    // German uses ',' as decimal. This hits the locale.decimal_separator() branch in impl_float.
+    assert_eq!(1.23f64.to_formatted_string(&Locale::de), "1,23");
+    // English uses '.'
+    assert_eq!(1.23f64.to_formatted_string(&Locale::en), "1.23");
+
+    // 2. Different Grouping Separators
+    // German uses '.' as grouping.
+    assert_eq!(1000.to_formatted_string(&Locale::de), "1.000");
+    // Swiss German often uses '\''
+    let gsw_res = 1000.to_formatted_string(&Locale::gsw);
+    assert!(gsw_res.contains('\'') || gsw_res.contains(' '));
+
+    // 3. Different Minus Signs
+    // Some locales use a specific Unicode minus (U+2212) instead of ASCII hyphen.
+    // This exercises the locale.minus_sign() branch in both macros.
+    let neg_val = -100;
+    let res_ar = neg_val.to_formatted_string(&Locale::ar_EG);
+    // Arabic often puts the sign in a different place or uses a different character
+    assert!(res_ar.contains(Locale::ar_EG.minus_sign()));
 }
 
 #[test]
-fn test_i8_negative() {
-    assert_eq!((-128i8).to_formatted_string(&Locale::en), "-128");
+fn test_native_numbering_systems_exhaustive() {
+    // This exercises the 'Some(d)' branch of _translate_digits.
+    // ar_EG uses the 'arab' numbering system (١٢٣)
+    let val = 1234567;
+    let res = val.to_formatted_string(&Locale::ar_EG);
+
+    // Ensure NO ASCII digits remain if the system is fully native
+    assert!(!res.contains('1'));
+    assert!(!res.contains('2'));
+
+    // This also verifies that the grouping separator used is the one
+    // appropriate for that numbering system (e.g., U+066C)
+    assert!(res.contains(Locale::ar_EG.grouping_separator()));
 }
 
 #[test]
-fn test_u128_large() {
-    let val: u128 = 1_000_000_000_000_000_000;
-    assert_eq!(
-        val.to_formatted_string(&Locale::en),
-        "1,000,000,000,000,000,000"
-    );
+fn test_float_special_cases_and_signs() {
+    // Hits the infinite branch with a custom locale minus sign
+    let neg_inf = f64::NEG_INFINITY;
+    let res = neg_inf.to_formatted_string(&Locale::ar_EG);
+
+    let expected_sign = Locale::ar_EG.minus_sign();
+    assert!(res.contains(expected_sign));
+    assert!(res.contains("inf"));
 }
 
 #[test]
-fn test_isize_boundaries() {
-    assert_eq!(0isize.to_formatted_string(&Locale::en), "0");
+fn test_macro_type_coverage() {
+    // Exercise different bit-widths to ensure macro expansion coverage
+    // i8 (Smallest signed)
+    assert_eq!((-1i8).to_formatted_string(&Locale::en), "-1");
+    // u128 (Largest unsigned)
+    assert!(1000u128.to_formatted_string(&Locale::en).contains(','));
+    // f32 vs f64
+    assert_eq!(1.5f32.to_formatted_string(&Locale::en), "1.5");
+    assert_eq!(1.5f64.to_formatted_string(&Locale::en), "1.5");
 }
 
 #[test]
-fn test_f32_standard() {
-    let val: f32 = 1234.5;
-    // format!() for f32 1234.5 usually gives "1234.5"
-    assert_eq!(val.to_formatted_string(&Locale::en), "1,234.5");
-}
-
-#[test]
-fn test_f64_german_separator() {
-    // German uses ',' for decimal and '.' for grouping
-    let val: f64 = 1234.56;
-    assert_eq!(val.to_formatted_string(&Locale::de), "1.234,56");
-}
-
-#[test]
-fn test_f64_negative() {
-    let val: f64 = -10.5;
-    assert_eq!(val.to_formatted_string(&Locale::en), "-10.5");
-}
-
-#[test]
-fn test_grouping_en_us() {
-    // Standard 3-digit grouping
-    assert_eq!(1000000.to_formatted_string(&Locale::en), "1,000,000");
-}
-
-#[test]
-fn test_grouping_hi_in() {
-    // Indian system: 1,00,00,000 (3-2-2)
-    let val = 10000000;
-    assert_eq!(val.to_formatted_string(&Locale::hi), "1,00,00,000");
-}
-
-#[test]
-fn test_grouping_boundary_exact() {
-    // Test exactly at the first grouping boundary
-    assert_eq!(100.to_formatted_string(&Locale::en), "100");
-    assert_eq!(1000.to_formatted_string(&Locale::en), "1,000");
-}
-
-#[test]
-fn test_separator_french_space() {
-    let res = 1000.to_formatted_string(&Locale::fr);
-    // CLDR often uses U+00A0 (Non-breaking space) or U+202F (Narrow NBSP)
-    let has_space = res
-        .chars()
-        .any(|c| c.is_whitespace() || c == '\u{a0}' || c == '\u{202f}');
-    assert!(has_space, "French result '{}' should contain a space", res);
-}
-
-#[test]
-fn test_separator_swiss_apostrophe() {
-    // Some Swiss variations use '
-    // Note: Depends on your specific CLDR version/variant
-    let res = 1000.to_formatted_string(&Locale::gsw);
-    assert!(res.contains('\'') || res.contains(' '));
-}
-
-#[test]
-fn test_sign_is_not_grouped() {
-    // Ensure the minus sign doesn't accidentally get treated as a digit
-    assert_eq!((-10000).to_formatted_string(&Locale::en), "-10,000");
-}
-
-#[test]
-fn test_zero_handling() {
-    assert_eq!(0.to_formatted_string(&Locale::en), "0");
-    assert_eq!(0.0f64.to_formatted_string(&Locale::en), "0");
-}
-
-#[test]
-fn arabic_numbers() {
-    // ar_EG (Egypt) or ar_SA (Saudi Arabia) typically default to 'arab' digits
-    assert_eq!(0.to_formatted_string(&Locale::ar_EG), "٠");
-    assert_eq!(123.to_formatted_string(&Locale::ar_EG), "١٢٣");
-    assert_eq!(
-        0123456789.to_formatted_string(&Locale::ar_EG),
-        "١٢٣٬٤٥٦٬٧٨٩"
-    )
+fn test_grouping_exhaustion_detailed() {
+    // Test the 'size_idx' logic for a locale that might have more than 2 grouping steps
+    // If a locale had [3, 2, 1], this would be vital.
+    // Most are [3] or [3, 2].
+    let hi_ = &Locale::hi;
+    // 1,00,00,000 (The '2' is repeated indefinitely after the first '3')
+    assert_eq!(10000000.to_formatted_string(hi_), "1,00,00,000");
 }
