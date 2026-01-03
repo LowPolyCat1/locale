@@ -21,9 +21,7 @@ pub struct CldrAsset {
     pub buffer: Vec<u8>,
 }
 
-pub fn get_latest_asset(
-    output_path: &str,
-) -> Result<Option<CldrAsset>, Box<dyn std::error::Error>> {
+pub fn get_latest_asset() -> Result<Option<CldrAsset>, Box<dyn std::error::Error>> {
     let client = Client::builder()
         .user_agent("rust-locale-gen")
         .timeout(Duration::from_secs(300))
@@ -40,13 +38,6 @@ pub fn get_latest_asset(
         .iter()
         .find(|a| a.name.contains("json-full.zip"))
         .ok_or("Could not find 'json-full.zip' in the latest release")?;
-
-    if Path::new(output_path).exists() {
-        let current_content = fs::read_to_string(output_path)?;
-        if current_content.contains(&format!("SOURCE_ASSET: &str = \"{}\"", asset_meta.name)) {
-            return Ok(None);
-        }
-    }
 
     let cache_dir = Path::new("cache");
     if !cache_dir.exists() {
