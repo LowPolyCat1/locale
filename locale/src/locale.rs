@@ -1,6 +1,7 @@
 // Auto-generated. DO NOT EDIT.
-use std::fmt;
 use std::str::FromStr;
+use std::fmt;
+#[cfg(feature = "strum")]
 use strum_macros::EnumIter;
 
 pub const SOURCE_ASSET: &str = "cldr-48.0.0-json-full.zip";
@@ -773,7 +774,9 @@ pub const AVAILABLE_LOCALES: [&str; 766] = [
     "zu",
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
+#[cfg_attr(feature = "strum", derive(EnumIter))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
 #[allow(non_camel_case_types)]
 pub enum Locale {
     aa,
@@ -3115,3 +3118,4 @@ impl Into<&str> for &'static Locale {
         self.as_str()
     }
 }
+

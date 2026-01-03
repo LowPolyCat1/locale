@@ -5,8 +5,13 @@ edition = "2024"
 
 
 [features]
+rebuild = []
+strum = ["dep:strum", "dep:strum_macros"]
 
 
 [dependencies]
-strum = { version = "0.27.2" }
-strum_macros = { version = "0.27.2" }
+strum = { version = "0.27.2", optional = true }
+strum_macros = { version = "0.27.2", optional = true }
+
+
+[build-dependencies]

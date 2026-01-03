@@ -62,13 +62,16 @@ pub fn run(
         r#"// Auto-generated. DO NOT EDIT.
 use std::str::FromStr;
 use std::fmt;
+#[cfg(feature = "strum")]
 use strum_macros::EnumIter;
 
 pub const SOURCE_ASSET: &str = "{asset_name}";
 pub const AVAILABLE_LOCALES: [&str; {count}] = [
 {names}];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
+#[cfg_attr(feature = "strum", derive(EnumIter))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
 #[allow(non_camel_case_types)]
 pub enum Locale {{
 {variants}}}
