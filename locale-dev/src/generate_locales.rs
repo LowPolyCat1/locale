@@ -17,13 +17,11 @@ pub fn run(
         let file = archive.by_index(i)?;
         if file.is_dir() && file.name().contains("/main/") {
             let parts: Vec<&str> = file.name().split('/').collect();
-            if let Some(idx) = parts.iter().position(|&r| r == "main") {
-                if let Some(name) = parts.get(idx + 1) {
-                    if !name.is_empty() && !locales.contains(&(*name).to_string()) {
+            if let Some(idx) = parts.iter().position(|&r| r == "main")
+                && let Some(name) = parts.get(idx + 1)
+                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
                         locales.push((*name).to_string());
                     }
-                }
-            }
         }
     }
     locales.sort();

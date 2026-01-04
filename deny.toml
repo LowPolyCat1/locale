@@ -1,0 +1,12 @@
+[licenses]
+unlicensed = "deny"
+allow = ["MIT", "Apache-2.0", "Unicode-DFS-2016", "BSD-3-Clause", "ISC"]
+copyleft = "deny"
+confidence-threshold = 0.8
+
+[advisories]
+vulnerability = "deny"
+unmaintained = "warn"
+
+[bans]
+multiple-versions = "warn"

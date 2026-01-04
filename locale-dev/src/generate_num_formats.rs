@@ -22,11 +22,10 @@ fn detect_all_groupings(pattern: &str) -> Vec<usize> {
     if let Some(primary) = parts.last() {
         sizes.push(primary.len());
     }
-    if parts.len() > 2 {
-        if let Some(secondary) = parts.get(parts.len() - 2) {
+    if parts.len() > 2
+        && let Some(secondary) = parts.get(parts.len() - 2) {
             sizes.push(secondary.len());
         }
-    }
 
     if sizes.len() > 1 && sizes[0] == sizes[1] {
         sizes.truncate(1);
@@ -47,8 +46,8 @@ pub fn run(
         let json: Value = serde_json::from_reader(&mut file)?;
         if let Some(systems) = json["supplemental"]["numberingSystems"].as_object() {
             for (name, data) in systems {
-                if data["_type"].as_str() == Some("numeric") {
-                    if let Some(digits_str) = data["_digits"].as_str() {
+                if data["_type"].as_str() == Some("numeric")
+                    && let Some(digits_str) = data["_digits"].as_str() {
                         let chars: Vec<char> = digits_str.chars().collect();
                         if chars.len() == 10 {
                             let mut arr = ['0'; 10];
@@ -56,7 +55,6 @@ pub fn run(
                             system_digit_map.insert(name.to_string(), arr);
                         }
                     }
-                }
             }
         }
     }
@@ -66,13 +64,11 @@ pub fn run(
         let file = archive.by_index(i)?;
         if file.name().contains("/main/") && file.is_dir() {
             let parts: Vec<&str> = file.name().split('/').collect();
-            if let Some(idx) = parts.iter().position(|&r| r == "main") {
-                if let Some(name) = parts.get(idx + 1) {
-                    if !name.is_empty() && !locales.contains(&(*name).to_string()) {
+            if let Some(idx) = parts.iter().position(|&r| r == "main")
+                && let Some(name) = parts.get(idx + 1)
+                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
                         locales.push((*name).to_string());
                     }
-                }
-            }
         }
     }
     locales.sort();
@@ -110,11 +106,10 @@ pub fn run(
                 minus = m.to_string();
             }
 
-            if system != "latn" {
-                if let Some(digits) = system_digit_map.get(system) {
+            if system != "latn"
+                && let Some(digits) = system_digit_map.get(system) {
                     digit_set_str = format!("Some({:?})", digits);
                 }
-            }
 
             let format_key = format!("decimalFormats-numberSystem-{}", system);
             if let Some(pattern) = numbers[format_key]["standard"].as_str() {
