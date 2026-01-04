@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/LowPolyCat1/locale"
 keywords = ["locale", "cldr", "format", "internationalization", "i18n"]
 categories = ["localization", "internationalization", "parsing"]
+documentation = "https://docs.rs/locale-rs"
 
 
 [features]
