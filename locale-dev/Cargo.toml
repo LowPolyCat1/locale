@@ -11,5 +11,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 quote = "1.0"
 proc-macro2 = "1.0"
-tracing = { version = "*" }
-tracing-subscriber = { version = "*" }
+tracing = { version = "0.1.44" }
+tracing-subscriber = { version = "0.3.22" }
