@@ -1,6 +1,7 @@
 pub mod download_latest;
 pub mod error;
 pub mod format;
+pub mod generate_currency_formatting;
 pub mod generate_datetime_formatting;
 pub mod generate_locales;
 pub mod generate_num_formats;

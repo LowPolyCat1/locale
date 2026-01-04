@@ -77,7 +77,6 @@ fn test_debug_print() {
 #[test]
 fn test_fallback_logic() {
     // Test 1: Regional to Base (if both exist in your zip)
-    // Note: Replace "en-US" and "en" with locales you know exist in your source
     if let Ok(regional) = Locale::from_str("en-US") {
         if let Some(fallback) = regional.fallback() {
             assert_eq!(fallback.as_str(), "en");
