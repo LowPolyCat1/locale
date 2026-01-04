@@ -169,7 +169,7 @@ impl Locale {{
         // Conditional digit translation based on feature
         #[cfg(feature = "nums")]
         {{
-            crate::num_formats::_translate_digits(result, self)
+            crate::num_formats::translate_digits(result, self)
         }}
         #[cfg(not(feature = "nums"))]
         {{
@@ -193,7 +193,10 @@ fn extract_indexed_months(obj: &Value) -> Vec<String> {
     let mut result = Vec::new();
     if let Some(map) = obj.as_object() {
         for i in 1..=12 {
-            let val = map.get(&i.to_string()).and_then(|v| v.as_str()).unwrap_or("");
+            let val = map
+                .get(&i.to_string())
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             result.push(val.to_string());
         }
     }

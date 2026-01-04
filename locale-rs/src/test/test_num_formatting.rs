@@ -27,7 +27,7 @@ fn test_diverse_numerical_symbols() {
 
 #[test]
 fn test_native_numbering_systems_exhaustive() {
-    // This exercises the 'Some(d)' branch of _translate_digits.
+    // This exercises the 'Some(d)' branch of translate_digits.
     // ar_EG uses the 'arab' numbering system (١٢٣)
     let val = 1234567;
     let res = val.to_formatted_string(&Locale::ar_EG);
