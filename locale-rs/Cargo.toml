@@ -24,7 +24,7 @@ strum_macros = { version = "0.27.2", optional = true }
 
 
 [dev-dependencies]
-criterion = { version = "*" }
+criterion = { version = "0.8.1" }
 
 
 [build-dependencies]
