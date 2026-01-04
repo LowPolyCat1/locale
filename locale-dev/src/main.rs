@@ -20,6 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &asset.name,
                 "./locale-rs/src/datetime_formats.rs",
             )?;
+            generate_currency_formatting::run(
+                asset.buffer.clone(),
+                &asset.name,
+                "./locale-rs/src/currency_formats.rs",
+            )?;
             format::format_generated_code();
         }
         None => {
