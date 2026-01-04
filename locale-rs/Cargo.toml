@@ -16,11 +16,19 @@ thiserror = { version = "2.0.17" }
 strum = { version = "0.27.2", optional = true }
 strum_macros = { version = "0.27.2", optional = true }
 
+
 [dev-dependencies]
 criterion = { version = "*" }
 
+
 [build-dependencies]
+
 
 [[bench]]
 name = "locale_bench"
 harness = false
+
+
+[[example]]
+name = "arabic_nums"
+features = ["nums"]
