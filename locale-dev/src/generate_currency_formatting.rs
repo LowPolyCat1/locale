@@ -22,12 +22,11 @@ pub fn run(
                 if let Some(cur_list) = currencies.as_array() {
                     for entry in cur_list {
                         let cur_code = entry.as_object().and_then(|m| m.keys().next());
-                        if let Some(code) = cur_code {
-                            if entry[code]["_to"].is_null() {
+                        if let Some(code) = cur_code
+                            && entry[code]["_to"].is_null() {
                                 region_to_currency.insert(region_code.clone(), code.clone());
                                 break;
                             }
-                        }
                     }
                 }
             }
@@ -56,13 +55,11 @@ pub fn run(
         let file = archive.by_index(i)?;
         if file.name().contains("/main/") && file.is_dir() {
             let parts: Vec<&str> = file.name().split('/').collect();
-            if let Some(idx) = parts.iter().position(|&r| r == "main") {
-                if let Some(name) = parts.get(idx + 1) {
-                    if !name.is_empty() && !locales.contains(&(*name).to_string()) {
+            if let Some(idx) = parts.iter().position(|&r| r == "main")
+                && let Some(name) = parts.get(idx + 1)
+                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
                         locales.push((*name).to_string());
                     }
-                }
-            }
         }
     }
     locales.sort();
