@@ -1,11 +1,14 @@
-#![cfg(feature = "nums")]
+#[allow(unused, deprecated)]
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-// Assuming your crate is named `my_locale_crate`
+#[cfg(feature = "nums")]
 use locale_rs::num_formats::ToFormattedString;
+#[cfg(feature = "datetime")]
 use locale_rs::{datetime_formats::DateTime, *};
 
+#[cfg(feature = "datetime")]
+
 fn bench_datetime_formatting(c: &mut Criterion) {
-    let locale = Locale::en; // Example locale
+    let locale = Locale::en;
     let dt = DateTime {
         year: 2023,
         month: 12,
@@ -39,6 +42,7 @@ fn bench_datetime_formatting(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "datetime")]
 fn bench_numeric_formatting(c: &mut Criterion) {
     let locale = Locale::en;
     let mut group = c.benchmark_group("Numeric Formatting");
@@ -68,6 +72,7 @@ fn bench_numeric_formatting(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "datetime")]
 fn bench_conversions(c: &mut Criterion) {
     let mut group = c.benchmark_group("Locale Conversions");
     let locale_str = "en";
@@ -84,6 +89,7 @@ fn bench_conversions(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "datetime")]
 criterion_group!(
     benches,
     bench_datetime_formatting,
@@ -91,4 +97,10 @@ criterion_group!(
     bench_conversions
 );
 
+#[cfg(feature = "datetime")]
 criterion_main!(benches);
+
+#[cfg(not(feature = "datetime"))]
+fn main() {
+    println!("Info: Feature nums is not active");
+}

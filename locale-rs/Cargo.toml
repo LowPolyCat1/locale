@@ -25,8 +25,9 @@ criterion = { version = "*" }
 
 
 [[bench]]
-name = "locale_bench"
+name = "datetime_bench"
 harness = false
+features = ["datetime"]
 
 
 [[example]]
