@@ -16,6 +16,7 @@ rebuild = []
 strum = ["dep:strum", "dep:strum_macros"]
 datetime = []
 nums = []
+all = ["datetime", "nums", "strum"]
 
 
 [dependencies]
