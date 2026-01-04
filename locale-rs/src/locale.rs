@@ -1,7 +1,7 @@
 // Auto-generated. DO NOT EDIT.
-use std::str::FromStr;
-use std::fmt;
 use crate::error::LocaleError;
+use std::fmt;
+use std::str::FromStr;
 
 #[cfg(feature = "strum")]
 use strum_macros::EnumIter;
