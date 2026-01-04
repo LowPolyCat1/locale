@@ -19,9 +19,11 @@ pub fn run(
             let parts: Vec<&str> = file.name().split('/').collect();
             if let Some(idx) = parts.iter().position(|&r| r == "main")
                 && let Some(name) = parts.get(idx + 1)
-                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
-                        locales.push((*name).to_string());
-                    }
+                && !name.is_empty()
+                && !locales.contains(&(*name).to_string())
+            {
+                locales.push((*name).to_string());
+            }
         }
     }
     locales.sort();
@@ -31,6 +33,7 @@ pub fn run(
     let mut days_wide_arms = String::new();
     let mut date_format_arms = String::new();
     let mut time_format_arms = String::new();
+    let mut am_pm_arms = String::new();
 
     for name in &locales {
         let var = sanitize_variant(name);
@@ -44,18 +47,34 @@ pub fn run(
             let m_abbr = extract_indexed_months(&greg["months"]["format"]["abbreviated"]);
             let d_wide = extract_days(&greg["days"]["format"]["wide"]);
 
+            // Extract AM/PM markers
+            let am = greg["dayPeriods"]["format"]["wide"]["am"]
+                .as_str()
+                .unwrap_or("AM");
+            let pm = greg["dayPeriods"]["format"]["wide"]["pm"]
+                .as_str()
+                .unwrap_or("PM");
+
             let d_medium = greg["dateFormats"]["medium"].as_str().unwrap_or("y-MM-dd");
             let t_medium = greg["timeFormats"]["medium"].as_str().unwrap_or("HH:mm:ss");
 
             months_wide_arms.push_str(&format!("            Locale::{} => &{:?},\n", var, m_wide));
             months_abbr_arms.push_str(&format!("            Locale::{} => &{:?},\n", var, m_abbr));
             days_wide_arms.push_str(&format!("            Locale::{} => &{:?},\n", var, d_wide));
+            am_pm_arms.push_str(&format!(
+                "            Locale::{} => ({:?}, {:?}),\n",
+                var, am, pm
+            ));
             date_format_arms.push_str(&format!("            Locale::{} => {:?},\n", var, d_medium));
             time_format_arms.push_str(&format!("            Locale::{} => {:?},\n", var, t_medium));
         } else {
             months_wide_arms.push_str(&format!("            Locale::{} => &[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\"],\n", var));
             months_abbr_arms.push_str(&format!("            Locale::{} => &[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"10\",\"11\",\"12\"],\n", var));
             days_wide_arms.push_str(&format!("            Locale::{} => &[\"Sun\",\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\"],\n", var));
+            am_pm_arms.push_str(&format!(
+                "            Locale::{} => (\"AM\", \"PM\"),\n",
+                var
+            ));
             date_format_arms.push_str(&format!("            Locale::{} => \"y-MM-dd\",\n", var));
             time_format_arms.push_str(&format!("            Locale::{} => \"HH:mm:ss\",\n", var));
         }
@@ -65,7 +84,6 @@ pub fn run(
         r#"// Auto-generated. DO NOT EDIT.
 use crate::locale::Locale;
 
-/// Component structure for passing date and time values to the formatter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DateTime {{
     pub year: i32,
@@ -89,6 +107,10 @@ impl Locale {{
         match self {{ {days_wide_arms} }}
     }}
 
+    fn am_pm(&self) -> (&'static str, &'static str) {{
+        match self {{ {am_pm_arms} }}
+    }}
+
     pub fn date_format_pattern(&self) -> &'static str {{
         match self {{ {date_format_arms} }}
     }}
@@ -98,13 +120,11 @@ impl Locale {{
     }}
 
     pub fn format_date(&self, dt: &DateTime) -> String {{
-        let pattern = self.date_format_pattern();
-        self._parse_runtime_pattern(pattern, dt)
+        self._parse_runtime_pattern(self.date_format_pattern(), dt)
     }}
 
     pub fn format_time(&self, dt: &DateTime) -> String {{
-        let pattern = self.time_format_pattern();
-        self._parse_runtime_pattern(pattern, dt)
+        self._parse_runtime_pattern(self.time_format_pattern(), dt)
     }}
 
     fn _parse_runtime_pattern(&self, pattern: &str, dt: &DateTime) -> String {{
@@ -150,35 +170,51 @@ impl Locale {{
                 'M' => {{
                     match count {{
                         1 | 2 => result.push_str(&format!("{{:0width$}}", dt.month, width = count)),
-                        3 => result.push_str(self.months_abbreviated()[(dt.month - 1) as usize]),
-                        _ => result.push_str(self.months_wide()[(dt.month - 1) as usize]),
+                        3 => result.push_str(self.months_abbreviated().get((dt.month - 1) as usize).unwrap_or(&"")),
+                        _ => result.push_str(self.months_wide().get((dt.month - 1) as usize).unwrap_or(&"")),
                     }}
                 }},
                 'd' => result.push_str(&format!("{{:0width$}}", dt.day, width = count)),
                 'H' => result.push_str(&format!("{{:0width$}}", dt.hour, width = count)),
+                'h' => {{
+                    let h12 = if dt.hour % 12 == 0 {{ 12 }} else {{ dt.hour % 12 }};
+                    result.push_str(&format!("{{:0width$}}", h12, width = count));
+                }},
                 'm' => result.push_str(&format!("{{:0width$}}", dt.minute, width = count)),
                 's' => result.push_str(&format!("{{:0width$}}", dt.second, width = count)),
+                'a' => {{
+                    let (am, pm) = self.am_pm();
+                    result.push_str(if dt.hour < 12 {{ am }} else {{ pm }});
+                }},
+                'E' => {{
+                    let dow = self._calculate_weekday(dt.year, dt.month, dt.day);
+                    result.push_str(self.days_wide().get(dow as usize).unwrap_or(&""));
+                }},
                 _ => {{
                     for _ in 0..count {{ result.push(c); }}
                 }}
             }}
         }}
 
-        // Conditional digit translation based on feature
         #[cfg(feature = "nums")]
-        {{
-            crate::num_formats::translate_digits(result, self)
-        }}
-        #[cfg(not(feature = "nums"))]
-        {{
-            result
-        }}
+        {{ result = crate::num_formats::translate_digits(result, self); }}
+
+        result
+    }}
+
+    fn _calculate_weekday(&self, mut y: i32, m: u32, d: u32) -> u32 {{
+        // Sakamoto's algorithm (0=Sun, 1=Mon...)
+        static T: [u32; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+        let mut y = y;
+        if m < 3 {{ y -= 1; }}
+        ( (y + y/4 - y/100 + y/400 + T[(m-1) as usize] as i32 + d as i32) % 7 ) as u32
     }}
 }}
 "#,
         months_wide_arms = months_wide_arms,
         months_abbr_arms = months_abbr_arms,
         days_wide_arms = days_wide_arms,
+        am_pm_arms = am_pm_arms,
         date_format_arms = date_format_arms,
         time_format_arms = time_format_arms
     );
