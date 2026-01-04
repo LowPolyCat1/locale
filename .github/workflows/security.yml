@@ -1,19 +1,17 @@
-name: Security Audit
+name: License Compliance
 
 on:
     push:
         branches: [main, master]
     pull_request:
         branches: [main, master]
-    schedule:
-        - cron: "0 0 * * 0" # Runs every Sunday at midnight
 
 jobs:
-    security_audit:
+    license_check:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - name: Run Cargo Audit
-              uses: rustsec/audit-check@v2
+            - name: Check Licenses
+              uses: EmbarkStudios/cargo-deny-action@v2
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  command: check advisories
