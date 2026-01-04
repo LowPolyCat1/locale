@@ -1575,7 +1575,7 @@ impl Locale {
         // 3. Apply pattern
         // \u{00a4} = ¤ (Currency Placeholder)
         // \x23 = # (Avoids Rust 2024 reserved multi-hash tokens)
-        let mut result = pattern
+        let result = pattern
             .replace('\u{00a4}', symbol)
             .replace("\x23,\x23\x230.00", &num_str)
             .replace("\x23,\x23\x230", &num_str);

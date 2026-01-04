@@ -23,10 +23,11 @@ pub fn run(
                     for entry in cur_list {
                         let cur_code = entry.as_object().and_then(|m| m.keys().next());
                         if let Some(code) = cur_code
-                            && entry[code]["_to"].is_null() {
-                                region_to_currency.insert(region_code.clone(), code.clone());
-                                break;
-                            }
+                            && entry[code]["_to"].is_null()
+                        {
+                            region_to_currency.insert(region_code.clone(), code.clone());
+                            break;
+                        }
                     }
                 }
             }
@@ -57,9 +58,11 @@ pub fn run(
             let parts: Vec<&str> = file.name().split('/').collect();
             if let Some(idx) = parts.iter().position(|&r| r == "main")
                 && let Some(name) = parts.get(idx + 1)
-                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
-                        locales.push((*name).to_string());
-                    }
+                && !name.is_empty()
+                && !locales.contains(&(*name).to_string())
+            {
+                locales.push((*name).to_string());
+            }
         }
     }
     locales.sort();
@@ -150,7 +153,7 @@ impl Locale {{
         // 3. Apply pattern
         // \u{{00a4}} = ¤ (Currency Placeholder)
         // \x23 = # (Avoids Rust 2024 reserved multi-hash tokens)
-        let mut result = pattern
+        let result = pattern
             .replace('\u{{00a4}}', symbol)
             .replace("\x23,\x23\x230.00", &num_str)
             .replace("\x23,\x23\x230", &num_str);
