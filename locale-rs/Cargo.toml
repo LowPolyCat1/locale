@@ -1,7 +1,13 @@
 [package]
 name = "locale-rs"
+authors = ["Julian Tepper"]
 version = "0.1.0"
 edition = "2024"
+description = "A strongly-typed locale library for Rust. Provides localized number and datetime formatting backed by Unicode CLDR data."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/LowPolyCat1/locale"
+keywords = ["locale", "cldr", "format", "internationalization", "i18n"]
+categories = ["localization", "internationalization", "parsing"]
 
 
 [features]
