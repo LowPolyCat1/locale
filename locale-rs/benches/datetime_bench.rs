@@ -1,4 +1,5 @@
-#[allow(unused, deprecated)]
+#![allow(deprecated)]
+#[allow(unused)]
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 #[cfg(feature = "nums")]
 use locale_rs::num_formats::ToFormattedString;
