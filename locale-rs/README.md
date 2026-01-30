@@ -25,13 +25,13 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-locale-rs = "0.1"
+locale-rs = "0.2"
 
 # With number formatting support
-locale-rs = { version = "0.1", features = ["nums"] }
+locale-rs = { version = "0.2", features = ["nums"] }
 
 # With all features
-locale-rs = { version = "0.1", features = ["all"] }
+locale-rs = { version = "0.2", features = ["all"] }
 ```
 
 ### Basic Usage
@@ -182,7 +182,7 @@ for locale in Locale::iter() {
 Enables all optional features.
 
 ```toml
-locale-rs = { version = "0.1", features = ["all"] }
+locale-rs = { version = "0.2", features = ["all"] }
 ```
 
 ## API Overview
