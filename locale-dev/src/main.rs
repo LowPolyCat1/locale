@@ -39,7 +39,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Finds the workspace root by looking for Cargo.toml with workspace members
 fn find_workspace_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let mut current = std::env::current_dir()?;
 
