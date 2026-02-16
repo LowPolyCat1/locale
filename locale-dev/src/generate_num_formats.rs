@@ -23,9 +23,10 @@ fn detect_all_groupings(pattern: &str) -> Vec<usize> {
         sizes.push(primary.len());
     }
     if parts.len() > 2
-        && let Some(secondary) = parts.get(parts.len() - 2) {
-            sizes.push(secondary.len());
-        }
+        && let Some(secondary) = parts.get(parts.len() - 2)
+    {
+        sizes.push(secondary.len());
+    }
 
     if sizes.len() > 1 && sizes[0] == sizes[1] {
         sizes.truncate(1);
@@ -47,14 +48,15 @@ pub fn run(
         if let Some(systems) = json["supplemental"]["numberingSystems"].as_object() {
             for (name, data) in systems {
                 if data["_type"].as_str() == Some("numeric")
-                    && let Some(digits_str) = data["_digits"].as_str() {
-                        let chars: Vec<char> = digits_str.chars().collect();
-                        if chars.len() == 10 {
-                            let mut arr = ['0'; 10];
-                            arr.copy_from_slice(&chars[..10]);
-                            system_digit_map.insert(name.to_string(), arr);
-                        }
+                    && let Some(digits_str) = data["_digits"].as_str()
+                {
+                    let chars: Vec<char> = digits_str.chars().collect();
+                    if chars.len() == 10 {
+                        let mut arr = ['0'; 10];
+                        arr.copy_from_slice(&chars[..10]);
+                        system_digit_map.insert(name.to_string(), arr);
                     }
+                }
             }
         }
     }
@@ -66,9 +68,11 @@ pub fn run(
             let parts: Vec<&str> = file.name().split('/').collect();
             if let Some(idx) = parts.iter().position(|&r| r == "main")
                 && let Some(name) = parts.get(idx + 1)
-                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
-                        locales.push((*name).to_string());
-                    }
+                && !name.is_empty()
+                && !locales.contains(&(*name).to_string())
+            {
+                locales.push((*name).to_string());
+            }
         }
     }
     locales.sort();
@@ -107,9 +111,10 @@ pub fn run(
             }
 
             if system != "latn"
-                && let Some(digits) = system_digit_map.get(system) {
-                    digit_set_str = format!("Some({:?})", digits);
-                }
+                && let Some(digits) = system_digit_map.get(system)
+            {
+                digit_set_str = format!("Some({:?})", digits);
+            }
 
             let format_key = format!("decimalFormats-numberSystem-{}", system);
             if let Some(pattern) = numbers[format_key]["standard"].as_str() {
@@ -166,14 +171,38 @@ pub trait ToFormattedString {{
 /// Translates ASCII digits 0-9 into the locale's native numbering system.
 pub fn translate_digits(input: String, locale: &Locale) -> String {{
     match locale.digits() {{
-        Some(d) => input.chars().map(|c| {{
-            if c.is_ascii_digit() {{
-                let idx = (c as u8 - b'0') as usize;
-                d[idx]
-            }} else {{
-                c
+        Some(d) => {{
+            let bytes = input.as_bytes();
+            let mut result = String::with_capacity(input.len() * 2);  // May grow due to multi-byte digits
+            let mut i = 0;
+            
+            while i < bytes.len() {{
+                let b = bytes[i];
+                
+                if b >= b'0' && b <= b'9' {{
+                    // ASCII digit - replace with locale digit
+                    let idx = (b - b'0') as usize;
+                    result.push(d[idx]);
+                    i += 1;
+                }} else if b < 128 {{
+                    // ASCII character (not digit) - keep as-is
+                    result.push(b as char);
+                    i += 1;
+                }} else {{
+                    // Multi-byte UTF-8 sequence - copy as-is
+                    let start = i;
+                    loop {{
+                        i += 1;
+                        if i >= bytes.len() || bytes[i] & 0b11000000 != 0b10000000 {{
+                            break;
+                        }}
+                    }}
+                    let s = unsafe {{ std::str::from_utf8_unchecked(&bytes[start..i]) }};
+                    result.push_str(s);
+                }}
             }}
-        }}).collect(),
+            result
+        }}
         None => input,
     }}
 }}
@@ -235,13 +264,13 @@ macro_rules! impl_int {{
 
                     let abs_str = unsafe {{ std::str::from_utf8_unchecked(&buf[pos..]) }};
                     let formatted = _format_int_str(abs_str, locale);
-                    
+
                     let res = if is_neg {{
                         format!("{{}}{{}}", locale.minus_sign(), formatted)
                     }} else {{
                         formatted
                     }};
-                    
+
                     translate_digits(res, locale)
                 }}
             }}
@@ -271,7 +300,7 @@ macro_rules! impl_uint {{
 #[inline(always)]
 fn format_int_to_buf(buf: &mut [u8; 128], mut n: u128) -> usize {{
     let mut pos = buf.len();
-    
+
     loop {{
         pos -= 1;
         buf[pos] = b'0' + ((n % 10) as u8);
@@ -280,7 +309,7 @@ fn format_int_to_buf(buf: &mut [u8; 128], mut n: u128) -> usize {{
             break;
         }}
     }}
-    
+
     pos
 }}
 

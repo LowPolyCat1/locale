@@ -3865,17 +3865,38 @@ pub trait ToFormattedString {
 /// Translates ASCII digits 0-9 into the locale's native numbering system.
 pub fn translate_digits(input: String, locale: &Locale) -> String {
     match locale.digits() {
-        Some(d) => input
-            .chars()
-            .map(|c| {
-                if c.is_ascii_digit() {
-                    let idx = (c as u8 - b'0') as usize;
-                    d[idx]
+        Some(d) => {
+            let bytes = input.as_bytes();
+            let mut result = String::with_capacity(input.len() * 2); // May grow due to multi-byte digits
+            let mut i = 0;
+
+            while i < bytes.len() {
+                let b = bytes[i];
+
+                if b >= b'0' && b <= b'9' {
+                    // ASCII digit - replace with locale digit
+                    let idx = (b - b'0') as usize;
+                    result.push(d[idx]);
+                    i += 1;
+                } else if b < 128 {
+                    // ASCII character (not digit) - keep as-is
+                    result.push(b as char);
+                    i += 1;
                 } else {
-                    c
+                    // Multi-byte UTF-8 sequence - copy as-is
+                    let start = i;
+                    loop {
+                        i += 1;
+                        if i >= bytes.len() || bytes[i] & 0b11000000 != 0b10000000 {
+                            break;
+                        }
+                    }
+                    let s = unsafe { std::str::from_utf8_unchecked(&bytes[start..i]) };
+                    result.push_str(s);
                 }
-            })
-            .collect(),
+            }
+            result
+        }
         None => input,
     }
 }
