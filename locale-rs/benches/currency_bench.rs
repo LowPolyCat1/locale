@@ -1,11 +1,11 @@
 #![allow(deprecated)]
 #[cfg(feature = "currency")]
 #[allow(unused)]
-use criterion::{Criterion, black_box, criterion_group, criterion_main, BenchmarkId};
-#[cfg(feature = "currency")]
-use std::str::FromStr;
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 #[cfg(feature = "currency")]
 use locale_rs::{Locale, currency_formats::ToCurrencyString};
+#[cfg(feature = "currency")]
+use std::str::FromStr;
 
 #[cfg(feature = "currency")]
 fn bench_currency_basic(c: &mut Criterion) {
@@ -45,16 +45,16 @@ fn bench_currency_multilingual(c: &mut Criterion) {
     group.warm_up_time(std::time::Duration::from_millis(500));
 
     let locales = [
-        Locale::en,    // English ($ USD)
-        Locale::de,    // German (€ EUR)
-        Locale::fr,    // French (€ EUR)
-        Locale::ja,    // Japanese (¥ JPY)
-        Locale::ar,    // Arabic
-        Locale::pt,    // Portuguese
-        Locale::ru,    // Russian
-        Locale::it,    // Italian
-        Locale::es,    // Spanish
-        Locale::ko,    // Korean
+        Locale::en, // English ($ USD)
+        Locale::de, // German (€ EUR)
+        Locale::fr, // French (€ EUR)
+        Locale::ja, // Japanese (¥ JPY)
+        Locale::ar, // Arabic
+        Locale::pt, // Portuguese
+        Locale::ru, // Russian
+        Locale::it, // Italian
+        Locale::es, // Spanish
+        Locale::ko, // Korean
     ];
 
     // Same amount across different locales
@@ -68,10 +68,9 @@ fn bench_currency_multilingual(c: &mut Criterion) {
 
     // Individual locale benchmarks
     for &locale in &locales {
-        group.bench_function(
-            format!("currency_en_{}", locale.as_str()),
-            |b| b.iter(|| black_box(100u32).to_currency(&locale)),
-        );
+        group.bench_function(format!("currency_en_{}", locale.as_str()), |b| {
+            b.iter(|| black_box(100u32).to_currency(&locale))
+        });
     }
 
     group.finish();
@@ -86,12 +85,12 @@ fn bench_currency_regional_variants(c: &mut Criterion) {
 
     // Different regions using same currency
     let en_variants = [
-        Locale::en,      // Base English
-        Locale::en_GB,   // British English
-        Locale::en_AG,   // Antigua English variant
-        Locale::en_AI,   // Anguilla variant
-        Locale::en_BE,   // Belgium English
-        Locale::en_BW,   // Botswana English
+        Locale::en,    // Base English
+        Locale::en_GB, // British English
+        Locale::en_AG, // Antigua English variant
+        Locale::en_AI, // Anguilla variant
+        Locale::en_BE, // Belgium English
+        Locale::en_BW, // Botswana English
     ];
 
     group.bench_function("currency_en_variants_100", |b| {
@@ -103,18 +102,17 @@ fn bench_currency_regional_variants(c: &mut Criterion) {
     });
 
     for &locale in &en_variants {
-        group.bench_function(
-            format!("currency_{}", locale.as_str()),
-            |b| b.iter(|| black_box(100u32).to_currency(&locale)),
-        );
+        group.bench_function(format!("currency_{}", locale.as_str()), |b| {
+            b.iter(|| black_box(100u32).to_currency(&locale))
+        });
     }
 
     // Different regions with different currencies
     let variants_mixed = [
-        Locale::es,      // Spanish (base)
-        Locale::de,      // German (no region)
-        Locale::de_AT,   // Austria variant
-        Locale::de_CH,   // Switzerland German variant
+        Locale::es,    // Spanish (base)
+        Locale::de,    // German (no region)
+        Locale::de_AT, // Austria variant
+        Locale::de_CH, // Switzerland German variant
     ];
 
     group.bench_function("currency_es_variants_100", |b| {
@@ -177,10 +175,9 @@ fn bench_currency_representation_symbols(c: &mut Criterion) {
     ];
 
     for (locale, label) in &symbol_types {
-        group.bench_function(
-            format!("symbol_{}", label),
-            |b| b.iter(|| black_box(1234).to_currency(&locale)),
-        );
+        group.bench_function(format!("symbol_{}", label), |b| {
+            b.iter(|| black_box(1234).to_currency(&locale))
+        });
     }
 
     group.finish();
