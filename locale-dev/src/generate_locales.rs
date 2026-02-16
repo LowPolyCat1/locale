@@ -19,9 +19,11 @@ pub fn run(
             let parts: Vec<&str> = file.name().split('/').collect();
             if let Some(idx) = parts.iter().position(|&r| r == "main")
                 && let Some(name) = parts.get(idx + 1)
-                    && !name.is_empty() && !locales.contains(&(*name).to_string()) {
-                        locales.push((*name).to_string());
-                    }
+                && !name.is_empty()
+                && !locales.contains(&(*name).to_string())
+            {
+                locales.push((*name).to_string());
+            }
         }
     }
     locales.sort();
@@ -79,10 +81,7 @@ pub fn run(
             String::new()
         };
 
-        lang_code_arms.push_str(&format!(
-            "            Locale::{} => \"{}\",\n",
-            var, lang
-        ));
+        lang_code_arms.push_str(&format!("            Locale::{} => \"{}\",\n", var, lang));
 
         if region.is_empty() {
             region_code_arms.push_str(&format!("            Locale::{} => None,\n", var));
@@ -99,6 +98,7 @@ pub fn run(
 use std::str::FromStr;
 use std::fmt;
 use crate::error::LocaleError;
+use phf::phf_map;
 
 #[cfg(feature = "strum")]
 use strum_macros::EnumIter;
@@ -106,6 +106,11 @@ use strum_macros::EnumIter;
 pub const SOURCE_ASSET: &str = "{asset_name}";
 pub const AVAILABLE_LOCALES: [&str; {count}] = [
 {names}];
+
+// Perfect hash map for O(1) locale lookup
+static LOCALE_MAP: phf::Map<&'static str, &'static str> = phf_map! {{
+{phf_map_entries}
+}};
 
 #[cfg_attr(feature = "strum", derive(EnumIter))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -283,15 +288,14 @@ impl FromStr for Locale {{
     fn from_str(s: &str) -> Result<Self, Self::Err> {{
         // Normalize input: replace underscores with hyphens and convert to lowercase
         let normalized = s.replace('_', "-").to_lowercase();
-        // Now convert back to match AVAILABLE_LOCALES format by restoring proper case
-        // We do this by finding the matching locale in AVAILABLE_LOCALES and using its case
-        for &locale_str in AVAILABLE_LOCALES.iter() {{
-            if locale_str.to_lowercase() == normalized {{
-                return match locale_str {{
-{from_str}                    _ => unreachable!(),
-                }};
-            }}
+
+        // Use perfect hash map for O(1) lookup instead of linear search
+        if let Some(&locale_str) = LOCALE_MAP.get(normalized.as_str()) {{
+            return match locale_str {{
+{from_str}                _ => unreachable!(),
+            }};
         }}
+
         Err(LocaleError::UnknownLocale(s.to_string()))
     }}
 }}
@@ -329,7 +333,11 @@ impl From<&Locale> for &'static str {{
         to_str = to_str,
         fallbacks = fallbacks,
         lang_code_arms = lang_code_arms,
-        region_code_arms = region_code_arms
+        region_code_arms = region_code_arms,
+        phf_map_entries = locales
+            .iter()
+            .map(|name| format!("    \"{}\" => \"{}\",\n", name.to_lowercase(), name))
+            .collect::<String>()
     );
 
     fs::write(output_path, code)?;
