@@ -37,7 +37,17 @@ criterion = { version = "0.8.1" }
 [[bench]]
 name = "datetime_bench"
 harness = false
-features = ["datetime"]
+required-features = ["datetime"]
+
+[[bench]]
+name = "currency_bench"
+harness = false
+required-features = ["currency"]
+
+[[bench]]
+name = "num_bench"
+harness = false
+required-features = ["nums"]
 
 
 [[example]]
