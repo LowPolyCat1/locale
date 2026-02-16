@@ -21192,7 +21192,7 @@ impl Locale {
         result
     }
 
-    fn _calculate_weekday(&self, mut y: i32, m: u32, d: u32) -> u32 {
+    fn _calculate_weekday(&self, y: i32, m: u32, d: u32) -> u32 {
         // Sakamoto's algorithm (0=Sun, 1=Mon...)
         static T: [u32; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
         let mut y = y;

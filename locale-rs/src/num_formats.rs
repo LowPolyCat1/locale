@@ -3865,22 +3865,44 @@ pub trait ToFormattedString {
 /// Translates ASCII digits 0-9 into the locale's native numbering system.
 pub fn translate_digits(input: String, locale: &Locale) -> String {
     match locale.digits() {
-        Some(d) => input
-            .chars()
-            .map(|c| {
-                if c.is_ascii_digit() {
-                    let idx = (c as u8 - b'0') as usize;
-                    d[idx]
+        Some(d) => {
+            let bytes = input.as_bytes();
+            let mut result = String::with_capacity(input.len() * 2); // May grow due to multi-byte digits
+            let mut i = 0;
+
+            while i < bytes.len() {
+                let b = bytes[i];
+
+                if b >= b'0' && b <= b'9' {
+                    // ASCII digit - replace with locale digit
+                    let idx = (b - b'0') as usize;
+                    result.push(d[idx]);
+                    i += 1;
+                } else if b < 128 {
+                    // ASCII character (not digit) - keep as-is
+                    result.push(b as char);
+                    i += 1;
                 } else {
-                    c
+                    // Multi-byte UTF-8 sequence - copy as-is
+                    let start = i;
+                    loop {
+                        i += 1;
+                        if i >= bytes.len() || bytes[i] & 0b11000000 != 0b10000000 {
+                            break;
+                        }
+                    }
+                    let s = unsafe { std::str::from_utf8_unchecked(&bytes[start..i]) };
+                    result.push_str(s);
                 }
-            })
-            .collect(),
+            }
+            result
+        }
         None => input,
     }
 }
 
 /// Formats the integer portion of a number with grouping separators.
+/// Uses stack-allocated buffer to minimize heap allocations.
 fn _format_int_str(numeric_part: &str, locale: &Locale) -> String {
     let sizes = locale.grouping_sizes();
     let separator = locale.grouping_separator();
@@ -3889,7 +3911,8 @@ fn _format_int_str(numeric_part: &str, locale: &Locale) -> String {
         return numeric_part.to_string();
     }
 
-    let mut result = Vec::with_capacity(numeric_part.len() + 32);
+    // Pre-allocate with 20% overhead for separators
+    let mut result = Vec::with_capacity(numeric_part.len() + numeric_part.len() / 5);
     let bytes = numeric_part.as_bytes();
 
     let mut i = 0;
@@ -3922,15 +3945,26 @@ macro_rules! impl_int {
         $(
             impl ToFormattedString for $t {
                 fn to_formatted_string(&self, locale: &Locale) -> String {
-                    let s = self.to_string();
-                    let (is_neg, abs_str) = if s.starts_with('-') { (true, &s[1..]) } else { (false, &s[..]) };
+                    // Use itoa-like approach: write ASCII directly to stack buffer
+                    let mut buf = [0u8; 128];
+                    let (is_neg, pos) = if *self < 0 {
+                        // Signed type - handle negation
+                        let n = (-(*self as i128)) as u128;
+                        (true, format_int_to_buf(&mut buf, n))
+                    } else {
+                        // Unsigned type - cast directly
+                        (false, format_int_to_buf(&mut buf, *self as u128))
+                    };
 
+                    let abs_str = unsafe { std::str::from_utf8_unchecked(&buf[pos..]) };
                     let formatted = _format_int_str(abs_str, locale);
+
                     let res = if is_neg {
                         format!("{}{}", locale.minus_sign(), formatted)
                     } else {
                         formatted
                     };
+
                     translate_digits(res, locale)
                 }
             }
@@ -3938,9 +3972,43 @@ macro_rules! impl_int {
     };
 }
 
-impl_int!(
-    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
-);
+macro_rules! impl_uint {
+    ($($t:ty),*) => {
+        $(
+            impl ToFormattedString for $t {
+                fn to_formatted_string(&self, locale: &Locale) -> String {
+                    // Unsigned type - no need to handle negation
+                    let mut buf = [0u8; 128];
+                    let pos = format_int_to_buf(&mut buf, *self as u128);
+
+                    let abs_str = unsafe { std::str::from_utf8_unchecked(&buf[pos..]) };
+                    let formatted = _format_int_str(abs_str, locale);
+                    translate_digits(formatted, locale)
+                }
+            }
+        )*
+    };
+}
+
+/// Helper function to format integer to buffer, returns position of start
+#[inline(always)]
+fn format_int_to_buf(buf: &mut [u8; 128], mut n: u128) -> usize {
+    let mut pos = buf.len();
+
+    loop {
+        pos -= 1;
+        buf[pos] = b'0' + ((n % 10) as u8);
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+
+    pos
+}
+
+impl_int!(i8, i16, i32, i64, i128, isize);
+impl_uint!(u8, u16, u32, u64, u128, usize);
 
 macro_rules! impl_float {
     ($($t:ty),*) => {
@@ -3955,15 +4023,22 @@ macro_rules! impl_float {
                     let s = format!("{}", self);
                     let (is_neg, s_abs) = if s.starts_with('-') { (true, &s[1..]) } else { (false, &s[..]) };
 
-                    let res = if let Some(pos) = s_abs.find('.') {
-                        let (int_part, frac_with_dot) = s_abs.split_at(pos);
+                    // Single allocation: format the result directly
+                    let res = if let Some(dot_pos) = s_abs.find('.') {
+                        let (int_part, frac_part) = s_abs.split_at(dot_pos);
                         let formatted_int = _format_int_str(int_part, locale);
-                        format!("{}{}{}", formatted_int, locale.decimal_separator(), &frac_with_dot[1..])
+                        // Combine without intermediate allocations
+                        format!("{}{}{}", formatted_int, locale.decimal_separator(), &frac_part[1..])
                     } else {
                         _format_int_str(s_abs, locale)
                     };
 
-                    let final_str = if is_neg { format!("{}{}", locale.minus_sign(), res) } else { res };
+                    // Apply minus sign and digit translation if needed
+                    let final_str = if is_neg {
+                        format!("{}{}", locale.minus_sign(), res)
+                    } else {
+                        res
+                    };
                     translate_digits(final_str, locale)
                 }
             }
