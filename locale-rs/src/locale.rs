@@ -7,7 +7,7 @@ use std::str::FromStr;
 #[cfg(feature = "strum")]
 use strum_macros::EnumIter;
 
-pub const SOURCE_ASSET: &str = "cldr-48.1.0-json-full.zip";
+pub const SOURCE_ASSET: &str = "cldr-48.2.0-json-full.zip";
 pub const AVAILABLE_LOCALES: [&str; 766] = [
     "aa",
     "aa-DJ",

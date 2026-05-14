@@ -1106,7 +1106,7 @@ impl Locale {
             Locale::fr_CD => " ",
             Locale::fr_CF => " ",
             Locale::fr_CG => " ",
-            Locale::fr_CH => " ",
+            Locale::fr_CH => "'",
             Locale::fr_CI => " ",
             Locale::fr_CM => " ",
             Locale::fr_DJ => " ",

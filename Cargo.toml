@@ -1,3 +1,8 @@
 [workspace]
 members = ["locale-rs", "locale-dev"]
 resolver = "3"
+
+[workspace.metadata.cldr]
+# Source of truth for the currently shipped CLDR release.
+# Updated automatically by `cargo run -p locale-dev`.
+version = "48.2.0"
