@@ -5,6 +5,7 @@ pub mod generate_currency_formatting;
 pub mod generate_datetime_formatting;
 pub mod generate_locales;
 pub mod generate_num_formats;
+pub mod version;
 
 #[cfg(test)]
 mod test;

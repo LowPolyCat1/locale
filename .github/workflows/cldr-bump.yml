@@ -1,0 +1,79 @@
+name: CLDR bump
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Regenerate from latest CLDR
+        run: cargo run -p locale-dev --release
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream CLDR change detected."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read versions from manifests
+        if: steps.changes.outputs.changed == 'true'
+        id: meta
+        shell: bash
+        run: |
+          cldr=$(awk -F'"' '/^\[workspace\.metadata\.cldr\]/{f=1;next} f && /^version[[:space:]]*=/{print $2; exit}' Cargo.toml)
+          crate=$(awk -F'"' '/^\[package\]/{f=1;next} f && /^version[[:space:]]*=/{print $2; exit}' locale-rs/Cargo.toml)
+          echo "cldr=$cldr" >> "$GITHUB_OUTPUT"
+          echo "crate=$crate" >> "$GITHUB_OUTPUT"
+
+      - name: Verify generated code builds
+        if: steps.changes.outputs.changed == 'true'
+        run: cargo build -p locale-rs --all-features
+
+      - name: Create pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: |
+            chore: bump CLDR to ${{ steps.meta.outputs.cldr }}
+
+            Bumps locale-rs to ${{ steps.meta.outputs.crate }}.
+          title: "chore: bump CLDR to ${{ steps.meta.outputs.cldr }}"
+          body: |
+            Automated regeneration from upstream CLDR `${{ steps.meta.outputs.cldr }}`.
+
+            - `locale-rs` -> `${{ steps.meta.outputs.crate }}`
+            - `[workspace.metadata.cldr] version` -> `${{ steps.meta.outputs.cldr }}`
+
+            ### Review checklist
+            - [ ] Diff in `locale-rs/src/locale.rs` — added/removed `Locale` variants are breaking changes
+            - [ ] Diff in `locale-rs/src/{num_formats,datetime_formats,currency_formats}.rs`
+            - [ ] Version bump is appropriate for the changes (see `bump_locale_rs_version` in `locale-dev`)
+
+            Once merged, push tag `v${{ steps.meta.outputs.crate }}` to trigger the publish workflow.
+          branch: cldr-bump/${{ steps.meta.outputs.cldr }}
+          delete-branch: true
+          labels: |
+            cldr-bump
+            automated

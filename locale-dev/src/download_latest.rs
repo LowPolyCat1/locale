@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::time::Duration;
 
+use crate::version;
+
 #[derive(Deserialize)]
 struct GithubRelease {
     assets: Vec<GithubAsset>,
@@ -18,10 +20,13 @@ struct GithubAsset {
 
 pub struct CldrAsset {
     pub name: String,
+    pub version: String,
     pub buffer: Vec<u8>,
 }
 
-pub fn get_latest_asset() -> Result<Option<CldrAsset>, Box<dyn std::error::Error>> {
+pub fn get_latest_asset(
+    current_version: Option<&str>,
+) -> Result<Option<CldrAsset>, Box<dyn std::error::Error>> {
     let client = Client::builder()
         .user_agent("rust-locale-gen")
         .timeout(Duration::from_secs(300))
@@ -38,6 +43,21 @@ pub fn get_latest_asset() -> Result<Option<CldrAsset>, Box<dyn std::error::Error
         .iter()
         .find(|a| a.name.contains("json-full.zip"))
         .ok_or("Could not find 'json-full.zip' in the latest release")?;
+
+    let latest_version = version::parse_version_from_asset(&asset_meta.name)
+        .ok_or_else(|| format!("Could not parse CLDR version from `{}`", asset_meta.name))?;
+
+    if let Some(current) = current_version {
+        if current == latest_version {
+            tracing::info!("Already on CLDR {current}; nothing to do.");
+            return Ok(None);
+        }
+        tracing::info!("CLDR upstream is {latest_version} (we are on {current}).");
+    } else {
+        tracing::warn!(
+            "No current CLDR version recorded; treating {latest_version} as a fresh bootstrap."
+        );
+    }
 
     let cache_dir = Path::new("cache");
     if !cache_dir.exists() {
@@ -59,6 +79,7 @@ pub fn get_latest_asset() -> Result<Option<CldrAsset>, Box<dyn std::error::Error
 
     Ok(Some(CldrAsset {
         name: asset_meta.name.clone(),
+        version: latest_version,
         buffer,
     }))
 }
