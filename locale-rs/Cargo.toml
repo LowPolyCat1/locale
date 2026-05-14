@@ -1,7 +1,7 @@
 [package]
 name = "locale-rs"
 authors = ["Julian Tepper"]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "A strongly-typed locale library for Rust. Provides localized number and datetime formatting backed by Unicode CLDR data."
 license = "MIT OR Apache-2.0"
@@ -24,7 +24,7 @@ all = ["datetime", "nums", "strum", "currency"]
 thiserror = { version = "2.0.17" }
 strum = { version = "0.27.2", optional = true }
 strum_macros = { version = "0.27.2", optional = true }
-phf = { version = "0.11", features = ["macros"] }
+phf = { version = "0.13.1", features = ["macros"] }
 
 
 [dev-dependencies]
