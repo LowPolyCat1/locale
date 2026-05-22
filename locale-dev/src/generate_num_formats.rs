@@ -364,3 +364,38 @@ impl_float!(f32, f64);
     fs::write(output_path, code)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_single_grouping_size() {
+        assert_eq!(detect_all_groupings("#,##0.##"), vec![3]);
+        assert_eq!(detect_all_groupings("#,##0"), vec![3]);
+    }
+
+    #[test]
+    fn detects_indian_style_grouping() {
+        // Indian numbering uses 3 for primary then 2 thereafter.
+        assert_eq!(detect_all_groupings("#,##,##0.##"), vec![3, 2]);
+    }
+
+    #[test]
+    fn collapses_uniform_secondary_grouping() {
+        // If primary and secondary are equal, the secondary is dropped.
+        assert_eq!(detect_all_groupings("#,###,##0.##"), vec![3]);
+    }
+
+    #[test]
+    fn no_grouping_marker_returns_zero() {
+        assert_eq!(detect_all_groupings("0.##"), vec![0]);
+        assert_eq!(detect_all_groupings("0"), vec![0]);
+    }
+
+    #[test]
+    fn ignores_fractional_portion() {
+        // Decimal portion has no influence on detected sizes.
+        assert_eq!(detect_all_groupings("#,##0.0000"), vec![3]);
+    }
+}
