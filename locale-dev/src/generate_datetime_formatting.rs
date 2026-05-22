@@ -248,3 +248,67 @@ fn extract_days(obj: &Value) -> Vec<String> {
     }
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn extract_indexed_months_returns_twelve_in_order() {
+        let v = json!({
+            "1": "January", "2": "February", "3": "March", "4": "April",
+            "5": "May", "6": "June", "7": "July", "8": "August",
+            "9": "September", "10": "October", "11": "November", "12": "December"
+        });
+        let months = extract_indexed_months(&v);
+        assert_eq!(months.len(), 12);
+        assert_eq!(months[0], "January");
+        assert_eq!(months[11], "December");
+    }
+
+    #[test]
+    fn extract_indexed_months_fills_gaps_with_empty_string() {
+        // Missing entries become "" rather than panicking.
+        let v = json!({ "1": "Jan", "12": "Dec" });
+        let months = extract_indexed_months(&v);
+        assert_eq!(months.len(), 12);
+        assert_eq!(months[0], "Jan");
+        assert_eq!(months[5], "");
+        assert_eq!(months[11], "Dec");
+    }
+
+    #[test]
+    fn extract_indexed_months_returns_empty_for_non_object() {
+        let v = json!("not an object");
+        assert!(extract_indexed_months(&v).is_empty());
+    }
+
+    #[test]
+    fn extract_days_is_sunday_first() {
+        let v = json!({
+            "sun": "Su", "mon": "Mo", "tue": "Tu", "wed": "We",
+            "thu": "Th", "fri": "Fr", "sat": "Sa"
+        });
+        assert_eq!(
+            extract_days(&v),
+            vec!["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+        );
+    }
+
+    #[test]
+    fn extract_days_fills_missing_keys_with_empty_string() {
+        let v = json!({ "mon": "Mo" });
+        let days = extract_days(&v);
+        assert_eq!(days.len(), 7);
+        assert_eq!(days[0], ""); // sun missing
+        assert_eq!(days[1], "Mo");
+        assert_eq!(days[6], ""); // sat missing
+    }
+
+    #[test]
+    fn extract_days_returns_empty_for_non_object() {
+        let v = json!(null);
+        assert!(extract_days(&v).is_empty());
+    }
+}
