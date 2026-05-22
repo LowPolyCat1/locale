@@ -9,9 +9,13 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+
       - name: Test (all features)
         run: cargo test --all-features --verbose
