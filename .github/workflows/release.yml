@@ -75,15 +75,25 @@ jobs:
   refresh-prs:
     needs: tag
     runs-on: ubuntu-latest
+    env:
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
+      - name: Create bot token
+        id: app
+        if: env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - name: Refresh open PRs that are behind master
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::warning::RELEASE_TOKEN is not set; skipping PR refresh."
+            echo "::warning::Neither the bot app nor RELEASE_TOKEN is configured; skipping PR refresh."
             exit 0
           fi
           rerun_cldr=false

@@ -22,6 +22,7 @@ jobs:
       BASE_REF: ${{ github.event.pull_request.base.ref }}
       HEAD_REF: ${{ github.event.pull_request.head.ref }}
       SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -77,21 +78,30 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Create bot token
+        id: app
+        if: steps.check.outputs.bumped == 'true' && env.SAME_REPO == 'true' && env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - name: Push version bump
         if: steps.check.outputs.bumped == 'true'
         shell: bash
         env:
-          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          PUSH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
           REQUIRED: ${{ steps.check.outputs.required }}
           LEVEL: ${{ steps.check.outputs.level }}
         run: |
-          if [ "$SAME_REPO" != "true" ] || [ -z "$RELEASE_TOKEN" ]; then
+          if [ "$SAME_REPO" != "true" ] || [ -z "$PUSH_TOKEN" ]; then
             echo "::error file=locale-rs/Cargo.toml::This PR needs a $LEVEL release: set locale-rs version to $REQUIRED (and run \`cargo update --workspace\`)."
             exit 1
           fi
           git add locale-rs/Cargo.toml Cargo.lock
           git commit -m "chore: bump locale-rs to $REQUIRED ($LEVEL)"
-          # Push with a PAT instead of GITHUB_TOKEN so CI runs on the new commit.
+          # Push as the bot app (allowed on cldr-bump/*) instead of GITHUB_TOKEN so
+          # CI runs on the new commit.
           git config --unset-all "http.${{ github.server_url }}/.extraheader" || true
-          git push "https://x-access-token:${RELEASE_TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" "HEAD:refs/heads/$HEAD_REF"
+          git push "https://x-access-token:${PUSH_TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" "HEAD:refs/heads/$HEAD_REF"
           echo "::notice::Pushed version bump to $REQUIRED; checks will re-run on the new commit."

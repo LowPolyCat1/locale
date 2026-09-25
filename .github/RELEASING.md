@@ -44,20 +44,27 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
 
 ## One-time repository setup
 
-- **`RELEASE_TOKEN` secret**: commits and PRs created with `GITHUB_TOKEN` don't
-  trigger CI, so the automation pushes with a personal access token instead.
-  1. GitHub → avatar → *Settings* → *Developer settings* → *Personal access
-     tokens* → *Fine-grained tokens* → *Generate new token*.
-  2. Resource owner: `LowPolyCat1`; Repository access: *Only select
-     repositories* → `locale`.
-  3. Repository permissions: *Contents*, *Pull requests* and *Workflows* set to
-     **Read and write** (*Metadata: read* is added automatically). *Workflows* is
-     needed because merged-in commits may touch `.github/workflows`.
-  4. Repo → *Settings* → *Secrets and variables* → **Actions** → *New repository
-     secret*: name `RELEASE_TOKEN`, value the token.
-  5. Same again under *Secrets and variables* → **Dependabot** (runs triggered by
-     Dependabot can only read Dependabot secrets).
-  6. Note the expiry date and rotate the token in both places before it expires.
+- **Bot GitHub App**: commits and PRs created with `GITHUB_TOKEN` don't trigger
+  CI, so the automation (version bumps, CLDR and changelog PRs, PR refreshes
+  and `@dependabot` commands) acts as a dedicated GitHub App. Its own identity
+  also lets a ruleset allow only the bot to push to `cldr-bump/*`.
+  1. Avatar → *Settings* → *Developer settings* → *GitHub Apps* → *New GitHub
+     App*. Any name and homepage URL, webhook *Active* off, installable *Only on
+     this account*.
+  2. Repository permissions, all **Read and write**: *Actions*, *Contents*,
+     *Pull requests*, *Workflows*.
+  3. Create it, note the **Client ID**, *Generate a private key* (downloads a
+     `.pem`), then *Install App* on this repository only.
+  4. Repo → *Settings* → *Secrets and variables* → **Actions**: add
+     `BOT_CLIENT_ID` (the Client ID) and `BOT_PRIVATE_KEY` (the `.pem` contents).
+  5. Same two secrets under *Secrets and variables* → **Dependabot** (runs
+     triggered by Dependabot can only read Dependabot secrets).
+
+  A `RELEASE_TOKEN` secret (personal access token) is still used as a fallback
+  when the app secrets are missing.
+- **Ruleset for `cldr-bump/**`** (optional): target pattern `cldr-bump/**`,
+  rules *Restrict creations* and *Restrict updates*, bypass list: only the bot
+  app. Leave deletions unrestricted so merged branches can be cleaned up.
 - **Settings → General → Allow auto-merge**: enabled (squash merging allowed).
 - **Branch protection / ruleset on `master`**: enable *Require branches to be
   up to date before merging*, so a PR can't merge with a version that was
