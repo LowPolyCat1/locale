@@ -30,7 +30,7 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
       REPO: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: master
           fetch-depth: 0
@@ -92,7 +92,7 @@ jobs:
 
       - name: Open changelog PR
         id: pr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           # A PAT lets CI run on the PR so it can auto-merge.
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
