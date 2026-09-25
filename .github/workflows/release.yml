@@ -55,6 +55,16 @@ jobs:
       tag: ${{ needs.tag.outputs.tag }}
     secrets: inherit
 
+  changelog:
+    needs: [tag, publish]
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/changelog.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit
+
   # Open auto-merge PRs were semver-checked against the old master. Bring them up
   # to date so the check re-runs and bumps past the version that was just released.
   refresh-prs:

@@ -23,6 +23,12 @@
    isn't tagged yet, it creates the tag and calls `publish.yml` to publish to
    crates.io. It then updates open auto-merge PRs that fell behind `master`, so
    their semver check re-runs against the newly released version.
+4. **`changelog.yml`** runs after a successful publish. It generates release notes
+   from the merged PRs (categories in `.github/release.yml`: breaking, CLDR,
+   dependencies, other), creates the GitHub release and opens an auto-merging PR
+   that adds the entry to `CHANGELOG.md`. PRs that need a major/breaking release
+   are labelled `breaking` by the semver check. It can also be run manually
+   (Actions → Changelog → Run workflow) for an existing tag.
 
 The script behind step 2 can be run locally (requires `cargo-semver-checks`):
 
@@ -33,11 +39,20 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
 
 ## One-time repository setup
 
-- **`RELEASE_TOKEN` secret**: a fine-grained PAT (or GitHub App token) with
-  *Contents: read & write* and *Pull requests: read & write* on this repo.
-  Add it both as an **Actions** secret and as a **Dependabot** secret
-  (Dependabot-triggered runs can only read Dependabot secrets). Commits pushed
-  with `GITHUB_TOKEN` don't trigger CI, so without it the bump can't be pushed.
+- **`RELEASE_TOKEN` secret**: commits and PRs created with `GITHUB_TOKEN` don't
+  trigger CI, so the automation pushes with a personal access token instead.
+  1. GitHub → avatar → *Settings* → *Developer settings* → *Personal access
+     tokens* → *Fine-grained tokens* → *Generate new token*.
+  2. Resource owner: `LowPolyCat1`; Repository access: *Only select
+     repositories* → `locale`.
+  3. Repository permissions: *Contents*, *Pull requests* and *Workflows* set to
+     **Read and write** (*Metadata: read* is added automatically). *Workflows* is
+     needed because merged-in commits may touch `.github/workflows`.
+  4. Repo → *Settings* → *Secrets and variables* → **Actions** → *New repository
+     secret*: name `RELEASE_TOKEN`, value the token.
+  5. Same again under *Secrets and variables* → **Dependabot** (runs triggered by
+     Dependabot can only read Dependabot secrets).
+  6. Note the expiry date and rotate the token in both places before it expires.
 - **Settings → General → Allow auto-merge**: enabled (squash merging allowed).
 - **Branch protection / ruleset on `master`**: require a PR and require the status
   checks (at least `semver`, `build`, `test`, `clippy`, `fmt`,
