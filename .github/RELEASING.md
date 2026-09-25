@@ -21,8 +21,13 @@
    Fork PRs can't be pushed to; the check fails with the required version instead.
 3. **`release.yml`** runs on every push to `master`. If `v<locale-rs version>`
    isn't tagged yet, it creates the tag and calls `publish.yml` to publish to
-   crates.io. It then updates open auto-merge PRs that fell behind `master`, so
-   their semver check re-runs against the newly released version.
+   crates.io. It then refreshes open PRs that fell behind `master`, so their
+   semver check re-runs against the newly released version:
+   - Dependabot PRs get `@dependabot rebase` (or `@dependabot recreate` if other
+     commits, such as a version bump, are on the branch). This also resolves
+     `Cargo.lock` conflicts between Dependabot PRs.
+   - CLDR bump PRs are regenerated from `master` by re-running `cldr-bump`.
+   - Other PRs with auto-merge enabled are updated via "Update branch".
 4. **`changelog.yml`** runs after a successful publish. It generates release notes
    from the merged PRs (categories in `.github/release.yml`: breaking, CLDR,
    dependencies, other), creates the GitHub release and opens an auto-merging PR
@@ -54,8 +59,10 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
      Dependabot can only read Dependabot secrets).
   6. Note the expiry date and rotate the token in both places before it expires.
 - **Settings → General → Allow auto-merge**: enabled (squash merging allowed).
-- **Branch protection / ruleset on `master`**: require a PR and require the status
-  checks (at least `semver`, `build`, `test`, `clippy`, `fmt`,
-  `license_check`) to pass. Without required checks, auto-merge would merge
-  Dependabot PRs immediately.
+- **Branch protection / ruleset on `master`**: enable *Require branches to be
+  up to date before merging*, so a PR can't merge with a version that was
+  checked against an outdated `master` (two PRs releasing the same version).
+  Also require a PR and require the status checks `semver`, `test`, `clippy`,
+  `fmt`, `cargo-deny (licenses)` and `build (<os>, stable)` for all three OSes.
+  Without required checks, auto-merge would merge Dependabot PRs immediately.
 - **`CARGO_REGISTRY_TOKEN` secret**: already used by `publish.yml`.
