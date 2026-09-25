@@ -14,6 +14,8 @@ permissions:
 jobs:
   bump:
     runs-on: ubuntu-latest
+    env:
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v7
 
@@ -52,12 +54,21 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: cargo build -p locale-rs --all-features
 
+      - name: Create bot token
+        id: app
+        if: steps.changes.outputs.changed == 'true' && env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - name: Create pull request
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
-          # A PAT lets CI (incl. the semver check) run on the created PR.
-          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          # The bot app is the only actor allowed to push to cldr-bump/* (ruleset);
+          # unlike GITHUB_TOKEN, its pushes also trigger CI on the PR.
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}
           commit-message: |
             chore: bump CLDR to ${{ steps.meta.outputs.cldr }}
 

@@ -21,8 +21,13 @@
    Fork PRs can't be pushed to; the check fails with the required version instead.
 3. **`release.yml`** runs on every push to `master`. If `v<locale-rs version>`
    isn't tagged yet, it creates the tag and calls `publish.yml` to publish to
-   crates.io. It then updates open auto-merge PRs that fell behind `master`, so
-   their semver check re-runs against the newly released version.
+   crates.io. It then refreshes open PRs that fell behind `master`, so their
+   semver check re-runs against the newly released version:
+   - Dependabot PRs get `@dependabot rebase` (or `@dependabot recreate` if other
+     commits, such as a version bump, are on the branch). This also resolves
+     `Cargo.lock` conflicts between Dependabot PRs.
+   - CLDR bump PRs are regenerated from `master` by re-running `cldr-bump`.
+   - Other PRs with auto-merge enabled are updated via "Update branch".
 4. **`changelog.yml`** runs after a successful publish. It generates release notes
    from the merged PRs (categories in `.github/release.yml`: breaking, CLDR,
    dependencies, other), creates the GitHub release and opens an auto-merging PR
@@ -39,23 +44,39 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
 
 ## One-time repository setup
 
-- **`RELEASE_TOKEN` secret**: commits and PRs created with `GITHUB_TOKEN` don't
-  trigger CI, so the automation pushes with a personal access token instead.
-  1. GitHub → avatar → *Settings* → *Developer settings* → *Personal access
-     tokens* → *Fine-grained tokens* → *Generate new token*.
-  2. Resource owner: `LowPolyCat1`; Repository access: *Only select
-     repositories* → `locale`.
-  3. Repository permissions: *Contents*, *Pull requests* and *Workflows* set to
-     **Read and write** (*Metadata: read* is added automatically). *Workflows* is
-     needed because merged-in commits may touch `.github/workflows`.
-  4. Repo → *Settings* → *Secrets and variables* → **Actions** → *New repository
-     secret*: name `RELEASE_TOKEN`, value the token.
-  5. Same again under *Secrets and variables* → **Dependabot** (runs triggered by
-     Dependabot can only read Dependabot secrets).
-  6. Note the expiry date and rotate the token in both places before it expires.
+- **Bot GitHub App**: commits and PRs created with `GITHUB_TOKEN` don't trigger
+  CI, so the automation (version bumps, CLDR and changelog PRs, PR refreshes)
+  acts as a dedicated GitHub App. Its own identity
+  also lets a ruleset allow only the bot to push to `cldr-bump/*`.
+  1. Avatar → *Settings* → *Developer settings* → *GitHub Apps* → *New GitHub
+     App*. Any name and homepage URL, webhook *Active* off, installable *Only on
+     this account*.
+  2. Repository permissions, all **Read and write**: *Actions*, *Contents*,
+     *Pull requests*, *Workflows*.
+  3. Create it, note the **Client ID**, *Generate a private key* (downloads a
+     `.pem`), then *Install App* on this repository only.
+  4. Repo → *Settings* → *Secrets and variables* → **Actions**: add
+     `BOT_CLIENT_ID` (the Client ID) and `BOT_PRIVATE_KEY` (the `.pem` contents).
+  5. Same two secrets under *Secrets and variables* → **Dependabot** (runs
+     triggered by Dependabot can only read Dependabot secrets).
+
+- **`RELEASE_TOKEN` secret**: Dependabot ignores commands from apps, so the
+  `@dependabot rebase/recreate` comments are posted with a personal access token
+  (it is also the fallback when the app secrets are missing).
+  1. Avatar → *Settings* → *Developer settings* → *Personal access tokens* →
+     *Fine-grained tokens* → *Generate new token*.
+  2. Repository access: *Only select repositories* → this repository.
+     Repository permissions: *Pull requests* **Read and write**.
+  3. Repo → *Settings* → *Secrets and variables* → **Actions**: add
+     `RELEASE_TOKEN`. Rotate it before it expires.
+- **Ruleset for `cldr-bump/**`** (optional): target pattern `cldr-bump/**`,
+  rules *Restrict creations* and *Restrict updates*, bypass list: only the bot
+  app. Leave deletions unrestricted so merged branches can be cleaned up.
 - **Settings → General → Allow auto-merge**: enabled (squash merging allowed).
-- **Branch protection / ruleset on `master`**: require a PR and require the status
-  checks (at least `semver`, `build`, `test`, `clippy`, `fmt`,
-  `license_check`) to pass. Without required checks, auto-merge would merge
-  Dependabot PRs immediately.
+- **Branch protection / ruleset on `master`**: enable *Require branches to be
+  up to date before merging*, so a PR can't merge with a version that was
+  checked against an outdated `master` (two PRs releasing the same version).
+  Also require a PR and require the status checks `semver`, `test`, `clippy`,
+  `fmt`, `cargo-deny (licenses)` and `build (<os>, stable)` for all three OSes.
+  Without required checks, auto-merge would merge Dependabot PRs immediately.
 - **`CARGO_REGISTRY_TOKEN` secret**: already used by `publish.yml`.
