@@ -75,6 +75,8 @@ jobs:
   refresh-prs:
     needs: tag
     runs-on: ubuntu-latest
+    permissions:
+      actions: write # re-run cldr-bump
     env:
       BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
@@ -92,6 +94,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
           # Dependabot ignores commands from apps, so these need a user's token.
           DEPENDABOT_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          ACTIONS_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
@@ -125,5 +128,7 @@ jobs:
                          (.autoMergeRequest != null)] | @tsv')
           if [ "$rerun_cldr" = true ]; then
             echo "Re-running cldr-bump to regenerate the CLDR PR from master"
-            gh workflow run cldr-bump.yml --repo "$REPO" --ref master
+            # workflow_dispatch is the one event GITHUB_TOKEN may trigger, so no
+            # extra token permissions are needed.
+            GH_TOKEN="$ACTIONS_TOKEN" gh workflow run cldr-bump.yml --repo "$REPO" --ref master
           fi
