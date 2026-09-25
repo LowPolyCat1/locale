@@ -56,6 +56,8 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
+          # A PAT lets CI (incl. the semver check) run on the created PR.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
           commit-message: |
             chore: bump CLDR to ${{ steps.meta.outputs.cldr }}
 
@@ -70,9 +72,9 @@ jobs:
             ### Review checklist
             - [ ] Diff in `locale-rs/src/locale.rs` — added/removed `Locale` variants are breaking changes
             - [ ] Diff in `locale-rs/src/{num_formats,datetime_formats,currency_formats}.rs`
-            - [ ] Version bump is appropriate for the changes (see `bump_locale_rs_version` in `locale-dev`)
+            - [ ] Version bump is appropriate for the changes (the `semver` check bumps it further if needed)
 
-            Once merged, push tag `v${{ steps.meta.outputs.crate }}` to trigger the publish workflow.
+            Once merged, the release workflow tags and publishes the new version automatically.
           branch: cldr-bump/${{ steps.meta.outputs.cldr }}
           delete-branch: true
           labels: |
