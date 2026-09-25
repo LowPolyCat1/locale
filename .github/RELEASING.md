@@ -45,8 +45,8 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
 ## One-time repository setup
 
 - **Bot GitHub App**: commits and PRs created with `GITHUB_TOKEN` don't trigger
-  CI, so the automation (version bumps, CLDR and changelog PRs, PR refreshes
-  and `@dependabot` commands) acts as a dedicated GitHub App. Its own identity
+  CI, so the automation (version bumps, CLDR and changelog PRs, PR refreshes)
+  acts as a dedicated GitHub App. Its own identity
   also lets a ruleset allow only the bot to push to `cldr-bump/*`.
   1. Avatar → *Settings* → *Developer settings* → *GitHub Apps* → *New GitHub
      App*. Any name and homepage URL, webhook *Active* off, installable *Only on
@@ -60,8 +60,15 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
   5. Same two secrets under *Secrets and variables* → **Dependabot** (runs
      triggered by Dependabot can only read Dependabot secrets).
 
-  A `RELEASE_TOKEN` secret (personal access token) is still used as a fallback
-  when the app secrets are missing.
+- **`RELEASE_TOKEN` secret**: Dependabot ignores commands from apps, so the
+  `@dependabot rebase/recreate` comments are posted with a personal access token
+  (it is also the fallback when the app secrets are missing).
+  1. Avatar → *Settings* → *Developer settings* → *Personal access tokens* →
+     *Fine-grained tokens* → *Generate new token*.
+  2. Repository access: *Only select repositories* → this repository.
+     Repository permissions: *Pull requests* **Read and write**.
+  3. Repo → *Settings* → *Secrets and variables* → **Actions**: add
+     `RELEASE_TOKEN`. Rotate it before it expires.
 - **Ruleset for `cldr-bump/**`** (optional): target pattern `cldr-bump/**`,
   rules *Restrict creations* and *Restrict updates*, bypass list: only the bot
   app. Leave deletions unrestricted so merged branches can be cleaned up.

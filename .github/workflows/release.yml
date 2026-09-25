@@ -90,6 +90,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+          # Dependabot ignores commands from apps, so these need a user's token.
+          DEPENDABOT_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
@@ -105,7 +107,11 @@ jobs:
               foreign=$(gh api "repos/$REPO/pulls/$number/commits" \
                 --jq '[.[] | select(.author.login != "dependabot[bot]")] | length')
               if [ "$foreign" -eq 0 ]; then cmd=rebase; else cmd=recreate; fi
-              gh pr comment "$number" --repo "$REPO" --body "@dependabot $cmd"
+              if [ -z "$DEPENDABOT_TOKEN" ]; then
+                echo "::warning::RELEASE_TOKEN is not set; cannot ask Dependabot to $cmd #$number."
+              else
+                GH_TOKEN="$DEPENDABOT_TOKEN" gh pr comment "$number" --repo "$REPO" --body "@dependabot $cmd"
+              fi
             elif [ "$cldr" = "true" ]; then
               rerun_cldr=true
             elif [ "$auto" = "true" ]; then
