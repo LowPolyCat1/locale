@@ -9,6 +9,13 @@ updates:
       open-pull-requests-limit: 5
       commit-message:
           prefix: chore
+      groups:
+          # One PR for all compatible updates; major updates stay separate so a
+          # breaking bump can't block the rest.
+          cargo:
+              update-types: [minor, patch]
+          cargo-major:
+              update-types: [major]
     - package-ecosystem: github-actions
       directory: /
       schedule:
@@ -17,3 +24,6 @@ updates:
       open-pull-requests-limit: 5
       commit-message:
           prefix: ci
+      groups:
+          github-actions:
+              patterns: ["*"]
