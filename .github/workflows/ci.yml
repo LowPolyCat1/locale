@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  msrv:
+    name: MSRV-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read MSRV from locale-rs/Cargo.toml
+        id: msrv
+        shell: bash
+        run: |
+          msrv=$(awk -F'"' '/^\[package\]/{f=1;next} /^\[/{f=0} f && /^rust-version[[:space:]]*=/{print $2; exit}' locale-rs/Cargo.toml)
+          if [ -z "$msrv" ]; then
+            echo "::error file=locale-rs/Cargo.toml::rust-version is not set."
+            exit 1
+          fi
+          echo "version=$msrv" >> "$GITHUB_OUTPUT"
+          echo "MSRV: $msrv"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Only the library is checked: dev-dependencies (e.g. criterion) may need a
+      # newer toolchain and don't affect users of the crate.
+      - name: Check (default features)
+        run: cargo check -p locale-rs --locked
+
+      - name: Check (all features)
+        run: cargo check -p locale-rs --all-features --locked
