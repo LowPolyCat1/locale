@@ -1,14 +1,9 @@
-#[cfg(feature = "nums")]
-fn main() {
-    use locale_rs;
-    use locale_rs::num_formats::ToFormattedString;
-    let locale = locale_rs::Locale::ar_EG;
-    for i in 0u32..9 {
-        println!("{}", i.to_formatted_string(&locale))
-    }
-}
+use locale_rs::{Locale, NumberFormatter};
 
-#[cfg(not(feature = "nums"))]
 fn main() {
-    panic!("Feature nums is not enabled")
+    let ar = NumberFormatter::new(Locale::ar_EG);
+    for i in 0u32..10 {
+        println!("{}", ar.format(i));
+    }
+    println!("{}", ar.format(-1234567.89));
 }

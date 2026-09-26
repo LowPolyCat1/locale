@@ -73,20 +73,12 @@ jobs:
           commit-message: |
             CLDR: bump to ${{ steps.meta.outputs.cldr }}
 
-            Bumps locale-rs to ${{ steps.meta.outputs.crate }}.
+            Bumps locale-rs to ${{ steps.meta.outputs.crate }} (breaking: the
+            generated data changed).
           title: "CLDR: bump to ${{ steps.meta.outputs.cldr }}"
-          body: |
-            Automated regeneration from upstream CLDR `${{ steps.meta.outputs.cldr }}`.
-
-            - `locale-rs` -> `${{ steps.meta.outputs.crate }}`
-            - `[workspace.metadata.cldr] version` -> `${{ steps.meta.outputs.cldr }}`
-
-            This PR merges automatically once all required checks pass. The `semver`
-            check raises the version further if needed (e.g. removed `Locale` variants
-            require a breaking release). Once merged, the release workflow tags and
-            publishes the new version.
-
-            To review it by hand first, disable auto-merge on this PR.
+          # Written by locale-dev: versions, changed data files and added or
+          # removed locales. Every data change is a breaking release.
+          body-path: target/cldr-bump-pr.md
           branch: cldr-bump/${{ steps.meta.outputs.cldr }}
           delete-branch: true
           labels: |

@@ -1,15 +1,20 @@
+pub mod cldr;
 pub mod download_latest;
+pub mod emit;
 pub mod error;
 pub mod format;
-pub mod generate_currency_formatting;
-pub mod generate_datetime_formatting;
-pub mod generate_locales;
-pub mod generate_num_formats;
+pub mod patterns;
+pub mod policy;
 pub mod readme;
 pub mod version;
 
 #[cfg(test)]
 mod test;
+
+use cldr::Cldr;
+use error::Result;
+use rayon::prelude::*;
+use std::path::{Path, PathBuf};
 
 const RUST_KEYWORDS: &[&str] = &[
     "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
@@ -26,4 +31,30 @@ pub fn sanitize_variant(name: &str) -> String {
     } else {
         variant
     }
+}
+
+/// Generates every data module of `locale-rs` into `data_dir`
+/// (`locale-rs/src/data`) and formats them. Returns the written files.
+///
+/// The emitters run in parallel, as does rustfmt.
+pub fn generate(cldr: &Cldr, cldr_version: &str, data_dir: &Path) -> Result<Vec<PathBuf>> {
+    type Emitter = fn(&Cldr, &str) -> Result<emit::RustFile>;
+    let [locales, numbers, dates, currency] = policy::GENERATED_FILES;
+    let emitters: [(&str, Emitter); 4] = [
+        (locales, emit::locales::emit),
+        (numbers, emit::numbers::emit),
+        (dates, emit::dates::emit),
+        (currency, emit::currency::emit),
+    ];
+    let written = emitters
+        .par_iter()
+        .map(|(name, emit)| emit(cldr, cldr_version)?.write(&data_dir.join(name)))
+        .collect::<Result<Vec<_>>>()?;
+    format::format_generated_code(&written)?;
+    tracing::info!(
+        "Generated {} locales into {}",
+        cldr.locales.len(),
+        data_dir.display()
+    );
+    Ok(written)
 }

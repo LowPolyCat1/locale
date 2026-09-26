@@ -1,36 +1,35 @@
-use std::process::Command;
+use crate::error::{Error, Result};
+use std::path::PathBuf;
+use std::process::{Child, Command, Stdio};
 
-pub fn format_generated_code() {
-    tracing::info!("Refining generated code in locale-rs...");
+/// Runs rustfmt over the generated files so they match `cargo fmt`, one
+/// process per file, all at once.
+pub fn format_generated_code(files: &[PathBuf]) -> Result<()> {
+    tracing::info!("Formatting {} generated files...", files.len());
+    let children = files
+        .iter()
+        .map(|file| {
+            Command::new("rustfmt")
+                .args(["--edition", "2024"])
+                .arg(file)
+                .stdout(Stdio::null())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| Error::Rustfmt(format!("could not run rustfmt: {e}")))
+        })
+        .collect::<Result<Vec<Child>>>()?;
 
-    let fmt_status = Command::new("cargo")
-        .arg("fmt")
-        .arg("-p")
-        .arg("locale-rs")
-        .status()
-        .expect("Failed to execute cargo fmt");
-
-    if fmt_status.success() {
-        tracing::info!("Successfully formatted locale-rs.");
-    } else {
-        panic!("Cargo fmt encountered errors.");
+    // Wait for every process before reporting, so none is left running.
+    let mut errors = Vec::new();
+    for child in children {
+        let output = child.wait_with_output()?;
+        if !output.status.success() {
+            errors.push(String::from_utf8_lossy(&output.stderr).into_owned());
+        }
     }
-
-    let clippy_status = Command::new("cargo")
-        .arg("clippy")
-        .arg("-p")
-        .arg("locale-rs")
-        .arg("--fix")
-        .arg("--allow-dirty")
-        .arg("--")
-        .arg("-D")
-        .arg("warnings")
-        .status()
-        .expect("Failed to execute cargo clippy");
-
-    if clippy_status.success() {
-        tracing::info!("Clippy checks passed/fixed for locale-rs.");
+    if errors.is_empty() {
+        Ok(())
     } else {
-        tracing::error!("Clippy found issues that require manual attention.");
+        Err(Error::Rustfmt(errors.join("\n")))
     }
 }

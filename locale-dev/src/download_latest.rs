@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::time::Duration;
 
+use crate::error::{Error, Result};
 use crate::version;
 
 #[derive(Deserialize)]
@@ -24,9 +25,12 @@ pub struct CldrAsset {
     pub buffer: Vec<u8>,
 }
 
+/// Downloads the latest `cldr-json` release asset into `cache_dir`, unless
+/// `current_version` is already the latest. A cached download is reused.
 pub fn get_latest_asset(
     current_version: Option<&str>,
-) -> Result<Option<CldrAsset>, Box<dyn std::error::Error>> {
+    cache_dir: &Path,
+) -> Result<Option<CldrAsset>> {
     let client = Client::builder()
         .user_agent("rust-locale-gen")
         .timeout(Duration::from_secs(300))
@@ -42,10 +46,14 @@ pub fn get_latest_asset(
         .assets
         .iter()
         .find(|a| a.name.contains("json-full.zip"))
-        .ok_or("Could not find 'json-full.zip' in the latest release")?;
+        .ok_or_else(|| Error::Cldr("no 'json-full.zip' asset in the latest release".into()))?;
 
-    let latest_version = version::parse_version_from_asset(&asset_meta.name)
-        .ok_or_else(|| format!("Could not parse CLDR version from `{}`", asset_meta.name))?;
+    let latest_version = version::parse_version_from_asset(&asset_meta.name).ok_or_else(|| {
+        Error::Version(format!(
+            "cannot parse the CLDR version of `{}`",
+            asset_meta.name
+        ))
+    })?;
 
     if let Some(current) = current_version {
         if current == latest_version {
@@ -59,14 +67,11 @@ pub fn get_latest_asset(
         );
     }
 
-    let cache_dir = Path::new("cache");
-    if !cache_dir.exists() {
-        fs::create_dir(cache_dir)?;
-    }
+    fs::create_dir_all(cache_dir)?;
     let zip_path = cache_dir.join(&asset_meta.name);
 
     let buffer = if zip_path.exists() {
-        tracing::info!("Using cached file: cache/{}", asset_meta.name);
+        tracing::info!("Using cached file: {}", zip_path.display());
         fs::read(&zip_path)?
     } else {
         tracing::info!("Downloading {}...", asset_meta.name);

@@ -1,44 +1,36 @@
 [package]
 name = "locale-rs"
 authors = ["Julian Tepper"]
-version = "0.3.5"
+version = "0.4.0-rc.1"
 edition = "2024"
 rust-version = "1.98.1"
-description = "A strongly-typed locale library for Rust. Provides localized number and datetime formatting backed by Unicode CLDR data."
+description = "A strongly-typed locale library for Rust. Provides localized number, currency and datetime formatting backed by Unicode CLDR data."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/LowPolyCat1/locale"
 keywords = ["locale", "cldr", "format", "internationalization", "i18n"]
 categories = ["localization", "internationalization", "parsing"]
 documentation = "https://docs.rs/locale-rs"
 
-
 [features]
-rebuild = []
 strum = ["dep:strum", "dep:strum_macros"]
 datetime = []
 nums = []
 currency = ["nums"]
 all = ["datetime", "nums", "strum", "currency"]
 
-
 [dependencies]
 thiserror = { version = "2.0.17" }
 strum = { version = "0.28.0", optional = true }
 strum_macros = { version = "0.28.0", optional = true }
-phf = { version = "0.14.0", features = ["macros"] }
-
+phf = { version = "0.14.0" }
 
 [dev-dependencies]
 criterion = { version = "0.8.1" }
 
-
-[build-dependencies]
-
-
 [[bench]]
 name = "datetime_bench"
 harness = false
-required-features = ["datetime"]
+required-features = ["datetime", "nums"]
 
 [[bench]]
 name = "currency_bench"
@@ -50,7 +42,17 @@ name = "num_bench"
 harness = false
 required-features = ["nums"]
 
-
 [[example]]
 name = "arabic_nums"
-features = ["nums"]
+required-features = ["nums"]
+
+[[example]]
+name = "currency"
+required-features = ["currency"]
+
+[[example]]
+name = "datetime"
+required-features = ["datetime"]
+
+[[example]]
+name = "flexible_parsing"

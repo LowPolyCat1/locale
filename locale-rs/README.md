@@ -1,21 +1,19 @@
 # locale-rs
 
-A comprehensive, strongly-typed Rust library for managing Unicode locales, built directly on the **CLDR (Common Locale Data Repository)** dataset.
+A strongly-typed Rust library for Unicode locales, built directly on the **CLDR (Common Locale Data Repository)** dataset.
 
-This crate provides a type-safe interface for locale identifiers, ensuring that your application remains compliant with international standards while benefiting from Rust's performance and safety guarantees.
+`Locale` is a plain enum with one variant per CLDR locale, so an invalid locale identifier is a compile error rather than a runtime surprise. Optional features add locale-aware number, currency and date formatting on top.
 
 ## Features
 
 - **<!-- gen:{{locale_count}} -->766<!-- /gen --> Unicode Locales**: Complete coverage of CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->
-- **Type-Safe Locales**: Compile-time validated locale identifiers as Rust enums
-- **Zero-Cost Abstractions**: No runtime overhead for locale operations
-- **Number Formatting**: Locale-aware formatting with native digit support
-- **Currency Formatting**: ICU-compatible currency patterns
-- **DateTime Formatting**: Localized month/weekday names and patterns
-- **Native Numbering Systems**: Automatic support for Arabic-Indic, Devanagari, Bengali, and more
-- **Flexible Parsing**: Parse locales with hyphens, underscores, or mixed case
-- **Locale Negotiation**: Find the best matching locale from available options
-- **Fuzzy Suggestions**: Get locale suggestions for typos or unknown identifiers
+- **Type-Safe Locales**: Locale identifiers are enum variants, checked at compile time
+- **CLDR Inheritance**: Fallback chains follow CLDR parent locales (`en-IN` inherits from `en-001`)
+- **Number Formatting**: Separators, grouping (including Indian `12,34,567`) and native digits
+- **Currency Formatting**: CLDR currency patterns, symbols and fraction digits for any ISO 4217 currency
+- **DateTime Formatting**: Localized month and weekday names with the medium date and time patterns
+- **Allocation-Free Display**: Formatters return values that implement `Display` and write straight into any buffer
+- **Flexible Parsing, Negotiation and Suggestions**: Case-insensitive parsing, best-match negotiation and typo suggestions
 
 ## Quick Start
 
@@ -37,81 +35,121 @@ locale-rs = { version = "{{crate_version_req}}", features = ["all"] }
 -->
 ```toml
 [dependencies]
-locale-rs = "0.3"
+locale-rs = "0.4.0-rc.1"
 
 # With number formatting support
-locale-rs = { version = "0.3", features = ["nums"] }
+locale-rs = { version = "0.4.0-rc.1", features = ["nums"] }
 
 # With all features
-locale-rs = { version = "0.3", features = ["all"] }
+locale-rs = { version = "0.4.0-rc.1", features = ["all"] }
 ```
 <!-- /gen -->
 
-### Basic Usage
+### Locales
 
 ```rust
 use locale_rs::Locale;
 
 // Direct enum access
 let locale = Locale::en_GB;
-println!("{}", locale);  // "en-GB"
+assert_eq!(locale.to_string(), "en-GB");
 
-// Parse from string
-let locale = Locale::from_str("en-GB")?;
+// Parsing is case-insensitive and accepts `_` or `-`
+let parsed: Locale = "en_gb".parse().unwrap();
+assert_eq!(parsed, Locale::en_GB);
 
-// Flexible parsing (case-insensitive, accepts hyphens or underscores)
-let locale = Locale::from_flexible("en_gb")?;
-
-// Extract subtags
+// Subtags
 assert_eq!(locale.language_code(), "en");
 assert_eq!(locale.region_code(), Some("GB"));
+
+// CLDR fallback chain
+let chain: Vec<Locale> = Locale::en_IN.fallback_chain().collect();
+assert_eq!(chain, [Locale::en_IN, Locale::en_001, Locale::en]);
+
+// Negotiation walks the chain
+let available = [Locale::en, Locale::de, Locale::fr];
+assert_eq!(Locale::en_GB.negotiate(&available), Some(Locale::en));
+
+// Suggestions for typos
+assert!(Locale::suggest("en-gbb").contains(&Locale::en_GB));
 ```
 
-### Number Formatting
+### Numbers (`nums`)
 
 ```rust
 use locale_rs::Locale;
-use locale_rs::num_formats::ToFormattedString;
+use locale_rs::nums::{NumberFormatter, NumberSymbols, ToFormattedString};
 
-let num = 1234567;
+assert_eq!(1234567.to_formatted_string(&Locale::en), "1,234,567");
+assert_eq!(1234567.to_formatted_string(&Locale::de), "1.234.567");
+assert_eq!(1234567.to_formatted_string(&Locale::hi), "12,34,567");
+assert_eq!(1234567.to_formatted_string(&Locale::ar_EG), "١٬٢٣٤٬٥٦٧");
+assert_eq!(42.5.to_formatted_string(&Locale::de), "42,5");
 
-// English: 1,234,567
-println!("{}", num.to_formatted_string(&Locale::en));
+// A formatter is reusable and its output implements `Display`,
+// including width and alignment.
+let de = NumberFormatter::new(Locale::de);
+assert_eq!(format!("[{:>10}]", de.format(-1234.5)), "[  -1.234,5]");
 
-// German: 1.234.567
-println!("{}", num.to_formatted_string(&Locale::de));
-
-// French: 1 234 567
-println!("{}", num.to_formatted_string(&Locale::fr));
-
-// Arabic with native digits: ١٬٢٣٤٬٥٦٧
-println!("{}", num.to_formatted_string(&Locale::ar));
+// The underlying CLDR data
+let symbols = NumberSymbols::for_locale(Locale::de_CH);
+assert_eq!((symbols.decimal, symbols.group), (".", "'"));
 ```
 
-### Locale Negotiation
+### Currency (`currency`)
 
 ```rust
 use locale_rs::Locale;
+use locale_rs::currency::{Currency, CurrencyFormatter, ToCurrencyString};
 
-let user_preference = Locale::en_GB;
-let available = vec![Locale::en, Locale::de, Locale::fr];
+// Each locale defaults to the currency of its country
+assert_eq!(1234.5.to_currency(&Locale::en), "$1,234.50");
+assert_eq!(1234.5.to_currency(&Locale::de), "1.234,50\u{a0}€");
+assert_eq!(1234.5.to_currency(&Locale::en_IN), "₹1,234.50");
+assert_eq!(Currency::default_for(Locale::de_CH).as_str(), "CHF");
 
-// Find best match (falls back through parent chain)
-if let Some(best) = user_preference.negotiate(&available) {
-    println!("Using: {}", best);  // "en"
-}
+// Any currency in any locale, with its own fraction digits
+let yen: Currency = "JPY".parse().unwrap();
+assert_eq!(1234.5.to_currency_in(&Locale::en, yen), "¥1,234");
+
+// Negative patterns come from CLDR
+let chf = CurrencyFormatter::new(Locale::de_CH);
+assert_eq!(chf.format(-5).to_string(), "CHF-5.00");
 ```
 
-### Locale Suggestions
+Floating-point amounts are rounded half to even on their shortest decimal representation, as ICU does. Integer amounts are formatted exactly, however large.
+
+### Dates and Times (`datetime`)
 
 ```rust
 use locale_rs::Locale;
+use locale_rs::datetime::{DateSymbols, DateTime, DateTimeFormatter};
 
-// Get suggestions for typos or unknown locales
-let suggestions = Locale::suggest("en-gbb");
-for locale in suggestions {
-    println!("{}", locale);  // Suggests: en-GB, en, etc.
-}
+// Fields are validated up front
+let dt = DateTime::new(2026, 1, 3, 14, 5, 9).unwrap();
+assert!(DateTime::new(2026, 2, 30, 0, 0, 0).is_err());
+
+assert_eq!(dt.to_date_string(&Locale::en), "Jan 3, 2026");
+assert_eq!(dt.to_date_string(&Locale::de), "03.01.2026");
+assert_eq!(dt.to_date_string(&Locale::zh_Hans), "2026年1月3日");
+
+// Numeric fields use native digits
+let ar = DateTimeFormatter::new(Locale::ar_EG);
+assert_eq!(ar.format_time(&dt).to_string(), "٢:٠٥:٠٩ م");
+
+// The underlying CLDR data, with pre-parsed patterns
+let de = DateSymbols::for_locale(Locale::de);
+assert_eq!(de.months_wide[0], "Januar");
+assert_eq!(de.date_pattern.source, "dd.MM.y");
+```
+
+### Iterating Locales (`strum`)
+
+```rust
+use locale_rs::Locale;
+use strum::IntoEnumIterator;
+
+assert_eq!(Locale::iter().count(), locale_rs::AVAILABLE_LOCALES.len());
 ```
 
 ## Features
@@ -123,319 +161,54 @@ None of these are enabled by default.
 -->
 | Feature | Enables | Description |
 | --- | --- | --- |
-| `rebuild` | - | Reserved for code regeneration; has no effect on the API. |
 | `strum` | `strum` crate, `strum_macros` crate | Derives `strum` traits on `Locale`, e.g. iterating over all locales. |
-| `datetime` | - | Localized month and weekday names and patterns (`datetime_formats`). |
-| `nums` | - | Locale-aware number formatting with native digits (`num_formats`). |
-| `currency` | `nums` | ICU-compatible currency formatting patterns (`currency_formats`). |
+| `datetime` | - | Localized date and time formatting (`datetime` module). |
+| `nums` | - | Locale-aware number formatting with native digits (`nums` module). |
+| `currency` | `nums` | Currency formatting from CLDR currency patterns (`currency` module). |
 | `all` | `datetime`, `nums`, `strum`, `currency` | Every feature above. |
 <!-- /gen -->
 
-### `nums` - Number Formatting
-
-Enables number formatting with locale-specific separators and native digit systems.
-
-```rust
-use locale_rs::Locale;
-use locale_rs::num_formats::ToFormattedString;
-
-let value = 42.5;
-println!("{}", value.to_formatted_string(&Locale::de));  // 42,5
-```
-
-### `currency` - Currency Formatting
-
-Enables currency formatting patterns (requires `nums`).
-
-```rust
-use locale_rs;
-use locale_rs::currency_formats::ToCurrencyString;
-let locale = locale_rs::Locale::en;
-for i in 0u32..10 {
-    println!("{}", i.to_currency(&locale))
-// $0,-
-// $1,-
-// $2,-
-// $3,-
-// $4,-
-// $5,-
-// $6,-
-// $7,-
-// $8,-
-// $9,-
-}
-let locale = locale_rs::Locale::de;
-for i in 0u32..10 {
-    println!("{}", i.to_currency(&locale))
-// 0,- €
-// 1,- €
-// 2,- €
-// 3,- €
-// 4,- €
-// 5,- €
-// 6,- €
-// 7,- €
-// 8,- €
-// 9,- €
-}
-```
-
-### `datetime` - DateTime Formatting
-
-Enables datetime formatting data.
-
-```rust
-use locale_rs::Locale;
-
-let locale = Locale::de;
-let months = locale.months_wide();
-println!("{}", months[0]);  // "Januar"
-```
-
-### `strum` - Enum Iteration
-
-Enables iteration over all locales using the `strum` crate.
-
-```rust
-use locale_rs::Locale;
-use strum::IntoEnumIter;
-
-for locale in Locale::iter() {
-    println!("{}", locale);
-}
-```
-
-### `all` - All Features
-
-Enables all optional features.
-
-```toml
-locale-rs = { version = "0.2", features = ["all"] }
-```
+`Locale` itself has the same API whatever features are enabled; the locale data is reached through the types of each feature module.
 
 ## API Overview
 
-### Core Methods
-
-| Method | Returns | Purpose |
-|--------|---------|---------|
-| `as_str()` | `&'static str` | Get string representation |
-| `fallback()` | `Option<Locale>` | Get parent locale |
-| `language_code()` | `&'static str` | Extract language subtag |
-| `region_code()` | `Option<&'static str>` | Extract region subtag |
-| `from_flexible(s)` | `Result<Locale, LocaleError>` | Parse with flexible formatting |
-| `negotiate(available)` | `Option<Locale>` | Find best match from list |
-| `suggest(input)` | `Vec<Locale>` | Get fuzzy suggestions |
-
-### Number Formatting (with `nums` feature)
-
-| Method | Returns | Purpose |
-|--------|---------|---------|
-| `decimal_separator()` | `&'static str` | Decimal point character |
-| `grouping_separator()` | `&'static str` | Thousands separator |
-| `grouping_sizes()` | `&'static [usize]` | Grouping size array |
-| `minus_sign()` | `&'static str` | Negative sign character |
-| `digits()` | `Option<[char; 10]>` | Native digit characters |
-
-### Currency Formatting (with `currency` feature)
-
-| Method | Returns | Purpose |
-|--------|---------|---------|
-| `currency_standard_pattern()` | `&'static str` | Standard currency pattern |
-| `currency_accounting_pattern()` | `&'static str` | Accounting format pattern |
-
-### DateTime Formatting (with `datetime` feature)
-
-| Method | Returns | Purpose |
-|--------|---------|---------|
-| `months_wide()` | `&'static [&'static str]` | Full month names |
-| `months_abbreviated()` | `&'static [&'static str]` | Short month names |
-| `weekdays_wide()` | `&'static [&'static str]` | Full weekday names |
-| `weekdays_abbreviated()` | `&'static [&'static str]` | Short weekday names |
-
-## Examples
-
-### Parsing Locales
-
-```rust
-use locale_rs::Locale;
-use std::str::FromStr;
-
-// Standard parsing
-let locale = Locale::from_str("en-GB")?;
-
-// Flexible parsing (case-insensitive, accepts underscores)
-let locale = Locale::from_flexible("en_gb")?;
-let locale = Locale::from_flexible("EN-GB")?;
-
-// TryFrom conversion
-let locale = Locale::try_from("en-GB")?;
-```
-
-### Fallback Chain
-
-```rust
-use locale_rs::Locale;
-
-let mut current = Locale::en_GB;
-while let Some(parent) = current.fallback() {
-    println!("Fallback: {}", parent);
-    current = parent;
-}
-// Output:
-// Fallback: en
-```
-
-### Locale Matching
-
-```rust
-use locale_rs::Locale;
-
-let user_locales = vec![Locale::en_GB, Locale::en];
-let available = vec![Locale::en, Locale::de, Locale::fr];
-
-// Find best match for each user locale
-for user_locale in user_locales {
-    if let Some(best) = user_locale.negotiate(&available) {
-        println!("{} -> {}", user_locale, best);
-    }
-}
-// Output:
-// en-GB -> en
-// en -> en
-```
-
-### Formatting Numbers
-
-```rust
-use locale_rs::Locale;
-use locale_rs::num_formats::ToFormattedString;
-
-let numbers = vec![1000, 1000000, 1234567];
-
-for num in numbers {
-    println!("en: {}", num.to_formatted_string(&Locale::en));
-    println!("de-DE: {}", num.to_formatted_string(&Locale::de));
-    println!("fr-FR: {}", num.to_formatted_string(&Locale::fr));
-    println!("ar-SA: {}", num.to_formatted_string(&Locale::ar_SA));
-    println!();
-}
-```
-
-### Formatting Floats
-
-```rust
-use locale_rs::Locale;
-use locale_rs::num_formats::ToFormattedString;
-
-let value = 3.14159;
-
-println!("en: {}", value.to_formatted_string(&Locale::en));      // 3.14159
-println!("de-DE: {}", value.to_formatted_string(&Locale::de));     // 3,14159
-println!("fr-FR: {}", value.to_formatted_string(&Locale::fr));     // 3,14159
-```
-
-### Currency Patterns
-
-```rust
-use locale_rs::Locale;
-
-let locales = vec![
-    Locale::en,
-    Locale::de,
-    Locale::fr,
-    Locale::ja,
-];
-
-for locale in locales {
-    let pattern = locale.currency_standard_pattern();
-    println!("{}: {}", locale, pattern);
-}
-// Output:
-// en: ¤#,##0.00
-// de: #,##0.00 ¤
-// fr: #,##0.00 ¤
-// ja: ¤#,##0.00
-```
-
-### DateTime Data
-
-```rust
-use locale_rs::Locale;
-
-let locale = Locale::de;
-
-println!("Months:");
-for (i, month) in locale.months_wide().iter().enumerate() {
-    println!("  {}: {}", i + 1, month);
-}
-
-println!("\nWeekdays:");
-for (i, day) in locale.weekdays_abbreviated().iter().enumerate() {
-    println!("  {}: {}", i, day);
-}
-```
-
-## Supported Locales
-
-The library supports **<!-- gen:{{locale_count}} -->766<!-- /gen --> locales** from CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->, including:
-
-- **Languages**: 200+ languages
-- **Regions**: 150+ territories
-- **Scripts**: Multiple script variants (e.g., `zh-Hans`, `zh-Hant`)
-- **Variants**: Special variants (e.g., `ca-ES-valencia`, `be-tarask`)
-
-View all available locales:
-
-```rust
-use locale_rs::AVAILABLE_LOCALES;
-
-for locale_str in AVAILABLE_LOCALES.iter() {
-    println!("{}", locale_str);
-}
-```
-
-## Performance
-
-- **Runtime**: Zero-cost abstractions; all operations are compile-time validated
-- **Memory**: Locale enum variants are zero-sized types
+| Module | Types | Purpose |
+| --- | --- | --- |
+| crate root | `Locale`, `LocaleError`, `AVAILABLE_LOCALES`, `CLDR_VERSION` | Identifiers, parsing, fallback, negotiation |
+| `nums` | `NumberFormatter`, `FormattedNumber`, `NumberSymbols`, `Grouping`, `ToFormattedString` | Number formatting |
+| `currency` | `CurrencyFormatter`, `FormattedCurrency`, `Currency`, `ToCurrencyString` | Currency formatting |
+| `datetime` | `DateTimeFormatter`, `FormattedDateTime`, `DateTime`, `DateSymbols`, `DatePattern`, `DatePart` | Date and time formatting |
 
 ## Error Handling
 
 ```rust
 use locale_rs::{Locale, LocaleError};
-use std::str::FromStr;
 
-match Locale::from_str("invalid-locale") {
-    Ok(locale) => println!("Valid: {}", locale),
-    Err(LocaleError::UnknownLocale(s)) => println!("Unknown locale: {}", s),
-    Err(LocaleError::Unknown(msg)) => println!("Error: {}", msg),
+match "invalid-locale".parse::<Locale>() {
+    Ok(locale) => println!("Valid: {locale}"),
+    Err(LocaleError::UnknownLocale(s)) => println!("Unknown locale: {s}"),
+    Err(e) => println!("Error: {e}"),
 }
 ```
 
+`LocaleError` has three variants: `UnknownLocale`, `InvalidCurrency` and `InvalidDateTime`.
+
+## Stability
+
+All public enums, `Locale` included, are exhaustive on purpose: when a release adds or removes a variant, every `match` that needs attention becomes a compile error. In exchange, every such change, and every CLDR data update that changes output, is released as a breaking version, so it never reaches you through a plain `cargo update`.
+
 ## Architecture
 
-This library is auto-generated from Unicode CLDR data by the `locale-dev` tool. The generation process:
+All CLDR data lives in `src/data/`, which is generated by [`locale-dev`](../locale-dev/README.md) and contains nothing but static tables indexed by `Locale`. Identical values are stored once. Date and currency patterns are parsed at generation time, so formatting only walks pre-parsed structures. Everything outside `src/data/` is handwritten Rust.
 
-1. Fetches the latest CLDR-JSON release from GitHub
-2. Parses locale definitions and formatting rules
-3. Generates strongly-typed Rust code
-4. Formats and lints the generated code
-
-See [locale-dev README](../locale-dev/README.md) for details on the code generation pipeline.
-
-## Updating to Latest CLDR
-
-The library is automatically updated when new CLDR releases are available. To manually update:
+To regenerate the data:
 
 ```bash
-# In the workspace root
+# In the workspace root: fetch the latest CLDR release if it is newer
 cargo run -p locale-dev
 
-# This will:
-# 1. Check GitHub for the latest CLDR release
-# 2. Generate updated code
-# 3. Format and lint the generated code
+# Or regenerate from a local cldr-json archive, e.g. after changing the generator
+cargo run -p locale-dev -- --archive path/to/cldr-48.2.2-json-full.zip
 ```
 
 ## Licensing
@@ -448,11 +221,7 @@ This project respects and adheres to the licensing requirements of its source da
 
 ## Contributing
 
-Contributions are welcome! Since the core code is generated, most improvements should be directed toward:
-
-- **locale-dev**: Improving code generation logic
-- **locale-rs**: Adding new helper methods or improving documentation
-- **Tests**: Expanding test coverage
+Contributions are welcome! Formatting logic lives in handwritten modules (`src/nums.rs`, `src/currency.rs`, `src/datetime.rs`); data changes go through `locale-dev`, never by editing `src/data/` by hand.
 
 If you find a missing locale or discrepancy with CLDR standards, please open an issue.
 

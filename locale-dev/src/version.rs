@@ -1,55 +1,51 @@
+use crate::error::{Error, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_edit::{DocumentMut, Item, Table, value};
 
+/// How to change the `locale-rs` version.
+///
+/// There is no minor or patch bump for data updates: every change to the
+/// generated data is released as a breaking change, so no downstream build
+/// or output changes without an explicit upgrade.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CldrVersion {
-    pub major: u32,
-    pub minor: u32,
-    pub patch: u32,
-}
-
-impl CldrVersion {
-    pub fn parse(s: &str) -> Option<Self> {
-        let mut parts = s.split('.');
-        let major = parts.next()?.parse().ok()?;
-        let minor = parts.next()?.parse().ok()?;
-        let patch = parts.next()?.parse().ok()?;
-        if parts.next().is_some() {
-            return None;
-        }
-        Some(Self {
-            major,
-            minor,
-            patch,
-        })
-    }
-}
-
-impl std::fmt::Display for CldrVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BumpKind {
-    Major,
-    Minor,
-    Patch,
+pub enum Bump {
+    /// The next breaking release: `0.4.2` -> `0.5.0`, `1.2.3` -> `2.0.0`.
+    /// A pre-release counts up instead: `0.5.0-rc.1` -> `0.5.0-rc.2`,
+    /// since `0.5.0` itself is not out yet.
+    Breaking,
+    /// Leave the version as it is.
     None,
 }
 
-pub fn classify_cldr_bump(old: CldrVersion, new: CldrVersion) -> BumpKind {
-    if new.major != old.major {
-        BumpKind::Major
-    } else if new.minor != old.minor {
-        BumpKind::Minor
-    } else if new.patch != old.patch {
-        BumpKind::Patch
-    } else {
-        BumpKind::None
-    }
+/// The version after applying `bump` to `current`.
+pub fn next_version(current: &str, bump: Bump) -> Result<String> {
+    let invalid = |why: &str| Error::Version(format!("Cannot bump `{current}`: {why}"));
+    let (core, pre) = match current.split_once('-') {
+        Some((core, pre)) => (core, Some(pre)),
+        None => (current, None),
+    };
+    let parts: Vec<u64> = core
+        .split('.')
+        .map(str::parse)
+        .collect::<Result<_, _>>()
+        .map_err(|_| invalid("expected MAJOR.MINOR.PATCH"))?;
+    let &[major, minor, _] = parts.as_slice() else {
+        return Err(invalid("expected MAJOR.MINOR.PATCH"));
+    };
+
+    Ok(match (bump, pre) {
+        (Bump::None, _) => current.to_string(),
+        (Bump::Breaking, Some(pre)) => {
+            let (label, number) = pre
+                .rsplit_once('.')
+                .and_then(|(label, n)| Some((label, n.parse::<u64>().ok()?)))
+                .ok_or_else(|| invalid("a pre-release needs a numeric last part, e.g. `rc.1`"))?;
+            format!("{core}-{label}.{}", number + 1)
+        }
+        (Bump::Breaking, None) if major == 0 => format!("0.{}.0", minor + 1),
+        (Bump::Breaking, None) => format!("{}.0.0", major + 1),
+    })
 }
 
 pub fn parse_version_from_asset(asset_name: &str) -> Option<String> {
@@ -66,13 +62,11 @@ fn locale_rs_cargo_toml(workspace_root: &Path) -> PathBuf {
     workspace_root.join("locale-rs").join("Cargo.toml")
 }
 
-fn load_doc(path: &Path) -> Result<DocumentMut, Box<dyn std::error::Error>> {
+fn load_doc(path: &Path) -> Result<DocumentMut> {
     Ok(fs::read_to_string(path)?.parse()?)
 }
 
-pub fn read_workspace_cldr_version(
-    workspace_root: &Path,
-) -> Result<Option<String>, Box<dyn std::error::Error>> {
+pub fn read_workspace_cldr_version(workspace_root: &Path) -> Result<Option<String>> {
     let doc = load_doc(&workspace_cargo_toml(workspace_root))?;
     Ok(doc
         .get("workspace")
@@ -83,10 +77,7 @@ pub fn read_workspace_cldr_version(
         .map(str::to_owned))
 }
 
-pub fn write_workspace_cldr_version(
-    workspace_root: &Path,
-    new_version: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_workspace_cldr_version(workspace_root: &Path, new_version: &str) -> Result<()> {
     let path = workspace_cargo_toml(workspace_root);
     let mut doc = load_doc(&path)?;
 
@@ -94,36 +85,33 @@ pub fn write_workspace_cldr_version(
         .entry("workspace")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace` is not a table".into()))?;
     let metadata = workspace
         .entry("metadata")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace.metadata` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace.metadata` is not a table".into()))?;
     let cldr = metadata
         .entry("cldr")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace.metadata.cldr` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace.metadata.cldr` is not a table".into()))?;
     cldr["version"] = value(new_version);
 
     fs::write(&path, doc.to_string())?;
     Ok(())
 }
 
-pub fn read_locale_rs_version(workspace_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+pub fn read_locale_rs_version(workspace_root: &Path) -> Result<String> {
     let doc = load_doc(&locale_rs_cargo_toml(workspace_root))?;
     doc.get("package")
         .and_then(|p| p.get("version"))
         .and_then(|v| v.as_str())
         .map(str::to_owned)
-        .ok_or_else(|| "Missing `package.version` in locale-rs/Cargo.toml".into())
+        .ok_or_else(|| Error::Version("Missing `package.version` in locale-rs/Cargo.toml".into()))
 }
 
-pub fn bump_locale_rs_version(
-    workspace_root: &Path,
-    bump: BumpKind,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub fn bump_locale_rs_version(workspace_root: &Path, bump: Bump) -> Result<(String, String)> {
     let path = locale_rs_cargo_toml(workspace_root);
     let mut doc = load_doc(&path)?;
 
@@ -131,33 +119,15 @@ pub fn bump_locale_rs_version(
         .get("package")
         .and_then(|p| p.get("version"))
         .and_then(|v| v.as_str())
-        .ok_or("Missing `package.version` in locale-rs/Cargo.toml")?
+        .ok_or_else(|| Error::Version("Missing `package.version` in locale-rs/Cargo.toml".into()))?
         .to_owned();
-
-    let parts: Vec<u32> = current
-        .split('.')
-        .map(str::parse)
-        .collect::<Result<_, _>>()
-        .map_err(|e| format!("Cannot parse locale-rs version `{current}`: {e}"))?;
-    if parts.len() != 3 {
-        return Err(format!("Expected MAJOR.MINOR.PATCH in `{current}`").into());
-    }
-    let (maj, min, pat) = (parts[0], parts[1], parts[2]);
-
-    let new = match (maj, bump) {
-        (_, BumpKind::None) => current.clone(),
-        (0, BumpKind::Major | BumpKind::Minor) => format!("0.{}.0", min + 1),
-        (0, BumpKind::Patch) => format!("0.{}.{}", min, pat + 1),
-        (_, BumpKind::Major) => format!("{}.0.0", maj + 1),
-        (_, BumpKind::Minor) => format!("{}.{}.0", maj, min + 1),
-        (_, BumpKind::Patch) => format!("{}.{}.{}", maj, min, pat + 1),
-    };
+    let new = next_version(&current, bump)?;
 
     if new != current {
         let pkg = doc
             .get_mut("package")
             .and_then(|p| p.as_table_mut())
-            .ok_or("`package` is not a table")?;
+            .ok_or_else(|| Error::Version("`package` is not a table".into()))?;
         pkg["version"] = value(&new);
         fs::write(&path, doc.to_string())?;
     }
@@ -179,20 +149,23 @@ mod tests {
     }
 
     #[test]
-    fn classifies_bumps() {
-        let v = |s| CldrVersion::parse(s).unwrap();
+    fn breaking_bumps() {
+        let next = |v| next_version(v, Bump::Breaking).unwrap();
+        assert_eq!(next("0.4.2"), "0.5.0");
+        assert_eq!(next("0.0.7"), "0.1.0");
+        assert_eq!(next("1.2.3"), "2.0.0");
+        assert_eq!(next("0.5.0-rc.1"), "0.5.0-rc.2");
+        assert_eq!(next("2.0.0-beta.9"), "2.0.0-beta.10");
         assert_eq!(
-            classify_cldr_bump(v("48.1.0"), v("49.0.0")),
-            BumpKind::Major
+            next_version("1.2.3-rc.1", Bump::None).unwrap(),
+            "1.2.3-rc.1"
         );
-        assert_eq!(
-            classify_cldr_bump(v("48.0.0"), v("48.1.0")),
-            BumpKind::Minor
-        );
-        assert_eq!(
-            classify_cldr_bump(v("48.1.0"), v("48.1.1")),
-            BumpKind::Patch
-        );
-        assert_eq!(classify_cldr_bump(v("48.1.0"), v("48.1.0")), BumpKind::None);
+    }
+
+    #[test]
+    fn rejects_unbumpable_versions() {
+        for v in ["1.2", "1.2.beta", "1.2.3.4", "1.2.3-rc", "1.2.3-rc.x", ""] {
+            assert!(next_version(v, Bump::Breaking).is_err(), "{v}");
+        }
     }
 }
