@@ -176,7 +176,7 @@ fn bench_currency_representation_symbols(c: &mut Criterion) {
 
     for (locale, label) in &symbol_types {
         group.bench_function(format!("symbol_{}", label), |b| {
-            b.iter(|| black_box(1234).to_currency(&locale))
+            b.iter(|| black_box(1234).to_currency(locale))
         });
     }
 
