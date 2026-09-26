@@ -28,7 +28,7 @@ fn bench_datetime_formatting(c: &mut Criterion) {
         day: 25,
         hour: 14,
         minute: 30,
-        second: 05,
+        second: 5,
     };
 
     group.bench_function("format_date", |b| {

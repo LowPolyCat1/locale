@@ -3873,7 +3873,7 @@ pub fn translate_digits(input: String, locale: &Locale) -> String {
             while i < bytes.len() {
                 let b = bytes[i];
 
-                if b >= b'0' && b <= b'9' {
+                if b.is_ascii_digit() {
                     // ASCII digit - replace with locale digit
                     let idx = (b - b'0') as usize;
                     result.push(d[idx]);
@@ -4021,7 +4021,7 @@ macro_rules! impl_float {
                     }
 
                     let s = format!("{}", self);
-                    let (is_neg, s_abs) = if s.starts_with('-') { (true, &s[1..]) } else { (false, &s[..]) };
+                    let (is_neg, s_abs) = if let Some(rest) = s.strip_prefix('-') { (true, rest) } else { (false, &s[..]) };
 
                     // Single allocation: format the result directly
                     let res = if let Some(dot_pos) = s_abs.find('.') {
