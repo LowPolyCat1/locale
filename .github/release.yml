@@ -1,0 +1,18 @@
+# Categories for generated release notes (used by the changelog workflow).
+changelog:
+  exclude:
+    labels:
+      - changelog
+  categories:
+    - title: Breaking changes
+      labels:
+        - breaking
+    - title: CLDR updates
+      labels:
+        - cldr-bump
+    - title: Dependencies
+      labels:
+        - dependencies
+    - title: Other changes
+      labels:
+        - "*"

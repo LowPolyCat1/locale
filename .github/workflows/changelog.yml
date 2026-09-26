@@ -1,0 +1,122 @@
+name: Changelog
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_call:
+    inputs:
+      tag:
+        description: Released tag (e.g. v0.3.1)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Released tag (e.g. v0.3.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      REPO: ${{ github.repository }}
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$TAG^" 2>/dev/null || true)
+          args=(-f tag_name="$TAG" -f target_commitish="$(git rev-parse "$TAG^{commit}")")
+          if [ -n "$prev" ]; then args+=(-f previous_tag_name="$prev"); fi
+          # Categories come from .github/release.yml (PR labels).
+          gh api "repos/$REPO/releases/generate-notes" "${args[@]}" --jq .body > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.notes.outputs.version }}
+        run: |
+          if gh release view "$TAG" --repo "$REPO" > /dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$REPO" --notes-file "$RUNNER_TEMP/notes.md"
+          else
+            gh release create "$TAG" --repo "$REPO" --verify-tag \
+              --title "locale-rs $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+
+      - name: Update CHANGELOG.md
+        shell: bash
+        env:
+          VERSION: ${{ steps.notes.outputs.version }}
+        run: |
+          if grep -q "^## \[$VERSION\]" CHANGELOG.md 2>/dev/null; then
+            echo "CHANGELOG.md already has an entry for $VERSION."
+            exit 0
+          fi
+          if [ ! -f CHANGELOG.md ]; then
+            printf '# Changelog\n\nAll notable changes to locale-rs are documented here.\n' > CHANGELOG.md
+          fi
+          date=$(git log -1 --format=%cs "$TAG")
+          {
+            echo "## [$VERSION](${{ github.server_url }}/$REPO/releases/tag/$TAG) - $date"
+            echo
+            # Nest the generated headings below the version heading.
+            sed -E 's/^(#+) /\1# /' "$RUNNER_TEMP/notes.md"
+            echo
+          } > "$RUNNER_TEMP/entry.md"
+          awk -v entry="$RUNNER_TEMP/entry.md" '
+            !done && /^## / { while ((getline l < entry) > 0) print l; done = 1 }
+            { print }
+            END { if (!done) { print ""; while ((getline l < entry) > 0) print l } }
+          ' CHANGELOG.md > "$RUNNER_TEMP/CHANGELOG.md"
+          mv "$RUNNER_TEMP/CHANGELOG.md" CHANGELOG.md
+
+      - name: Create bot token
+        id: app
+        if: env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Open changelog PR
+        id: pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          # Unlike GITHUB_TOKEN, the bot's pushes trigger CI, so the PR can auto-merge.
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}
+          commit-message: "docs: changelog for ${{ env.TAG }}"
+          title: "docs: changelog for ${{ env.TAG }}"
+          body: Adds the release notes of `${{ env.TAG }}` to `CHANGELOG.md`.
+          branch: changelog/${{ env.TAG }}
+          delete-branch: true
+          add-paths: CHANGELOG.md
+          labels: |
+            changelog
+            automated
+
+      - name: Enable auto-merge
+        if: steps.pr.outputs.pull-request-url != ''
+        run: gh pr merge --auto --squash "${{ steps.pr.outputs.pull-request-url }}"
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}

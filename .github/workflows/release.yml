@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      created: ${{ steps.tag.outputs.created }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag locale-rs version
+        id: tag
+        shell: bash
+        run: |
+          version=$(awk -F'"' '/^\[package\]/{f=1;next} /^\[/{f=0} f && /^version[[:space:]]*=/{print $2; exit}' locale-rs/Cargo.toml)
+          tag="v$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            echo "Tag $tag already exists, nothing to release."
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "locale-rs $version"
+          git push origin "$tag"
+          echo "created=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::Created tag $tag"
+
+  # Tags pushed with GITHUB_TOKEN don't trigger other workflows, so publish is called directly.
+  publish:
+    needs: tag
+    if: needs.tag.outputs.created == 'true'
+    permissions:
+      contents: read
+      actions: write
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit
+
+  changelog:
+    needs: [tag, publish]
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/changelog.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit
+
+  # Open PRs were semver-checked against the old master. Bring them up to date so
+  # the check re-runs (and bumps past the version that was just released):
+  #   - Dependabot PRs: `@dependabot rebase`, or `@dependabot recreate` once other
+  #     commits (e.g. a version bump) are on the branch, since Dependabot then
+  #     refuses to rebase. Both also resolve Cargo.lock conflicts.
+  #   - CLDR bump PRs: re-run cldr-bump, which regenerates the branch from master.
+  #   - Other auto-merge PRs: GitHub's "Update branch" (merge master in).
+  refresh-prs:
+    needs: tag
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # re-run cldr-bump
+    env:
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
+    steps:
+      - name: Create bot token
+        id: app
+        if: env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Refresh open PRs that are behind master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+          # Dependabot ignores commands from apps, so these need a user's token.
+          DEPENDABOT_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          ACTIONS_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Neither the bot app nor RELEASE_TOKEN is configured; skipping PR refresh."
+            exit 0
+          fi
+          rerun_cldr=false
+          while IFS=$'\t' read -r number sha author cldr auto; do
+            behind=$(gh api "repos/$REPO/compare/$sha...master" --jq .ahead_by)
+            [ "$behind" -gt 0 ] || continue
+            echo "#$number is $behind commits behind master"
+            if [[ "$author" == *dependabot* ]]; then
+              foreign=$(gh api "repos/$REPO/pulls/$number/commits" \
+                --jq '[.[] | select(.author.login != "dependabot[bot]")] | length')
+              if [ "$foreign" -eq 0 ]; then cmd=rebase; else cmd=recreate; fi
+              if [ -z "$DEPENDABOT_TOKEN" ]; then
+                echo "::warning::RELEASE_TOKEN is not set; cannot ask Dependabot to $cmd #$number."
+              else
+                GH_TOKEN="$DEPENDABOT_TOKEN" gh pr comment "$number" --repo "$REPO" --body "@dependabot $cmd"
+              fi
+            elif [ "$cldr" = "true" ]; then
+              rerun_cldr=true
+            elif [ "$auto" = "true" ]; then
+              gh api -X PUT "repos/$REPO/pulls/$number/update-branch" -f expected_head_sha="$sha" \
+                || echo "::warning::Could not update #$number (merge conflict?)"
+            fi
+          done < <(gh pr list --repo "$REPO" --base master --state open --limit 100 \
+            --json number,headRefOid,author,labels,autoMergeRequest \
+            --jq '.[] | [.number, .headRefOid, .author.login,
+                         any(.labels[]; .name == "cldr-bump"),
+                         (.autoMergeRequest != null)] | @tsv')
+          if [ "$rerun_cldr" = true ]; then
+            echo "Re-running cldr-bump to regenerate the CLDR PR from master"
+            # workflow_dispatch is the one event GITHUB_TOKEN may trigger, so no
+            # extra token permissions are needed.
+            GH_TOKEN="$ACTIONS_TOKEN" gh workflow run cldr-bump.yml --repo "$REPO" --ref master
+          fi

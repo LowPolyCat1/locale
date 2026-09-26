@@ -1,0 +1,107 @@
+name: semver
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: semver-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semver:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-semver-checks
+
+      - name: Merge base branch into PR head
+        id: base
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags "${{ github.server_url }}/${{ github.repository }}" \
+            "+refs/heads/$BASE_REF:refs/remotes/upstream/$BASE_REF"
+          echo "sha=$(git rev-parse "upstream/$BASE_REF")" >> "$GITHUB_OUTPUT"
+          if ! git merge --no-edit "upstream/$BASE_REF"; then
+            echo "::error::PR branch conflicts with $BASE_REF; resolve the conflict first."
+            exit 1
+          fi
+
+      - name: Check semver
+        id: check
+        shell: bash
+        run: .github/scripts/semver-check.sh "${{ steps.base.outputs.sha }}" --write
+
+      - name: Summary
+        if: always() && steps.check.outcome != 'skipped'
+        shell: bash
+        run: |
+          {
+            echo "### locale-rs semver"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Affects locale-rs | ${{ steps.check.outputs.changed }} |"
+            echo "| Required release | ${{ steps.check.outputs.level }} |"
+            echo "| Version on \`$BASE_REF\` | ${{ steps.check.outputs.base }} |"
+            echo "| Version in PR | ${{ steps.check.outputs.current }} |"
+            echo "| Minimum version | ${{ steps.check.outputs.required }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Sorts the PR under "Breaking changes" in the release notes.
+      - name: Label breaking change
+        if: steps.check.outputs.level == 'major'
+        continue-on-error: true
+        run: gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels" -f "labels[]=breaking"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create bot token
+        id: app
+        if: steps.check.outputs.bumped == 'true' && env.SAME_REPO == 'true' && env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Push version bump
+        if: steps.check.outputs.bumped == 'true'
+        shell: bash
+        env:
+          PUSH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+          REQUIRED: ${{ steps.check.outputs.required }}
+          LEVEL: ${{ steps.check.outputs.level }}
+        run: |
+          if [ "$SAME_REPO" != "true" ] || [ -z "$PUSH_TOKEN" ]; then
+            echo "::error file=locale-rs/Cargo.toml::This PR needs a $LEVEL release: set locale-rs version to $REQUIRED (and run \`cargo update --workspace\`)."
+            exit 1
+          fi
+          git add locale-rs/Cargo.toml Cargo.lock
+          git commit -m "chore: bump locale-rs to $REQUIRED ($LEVEL)"
+          # Push as the bot app (allowed on cldr-bump/*) instead of GITHUB_TOKEN so
+          # CI runs on the new commit.
+          git config --unset-all "http.${{ github.server_url }}/.extraheader" || true
+          git push "https://x-access-token:${PUSH_TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" "HEAD:refs/heads/$HEAD_REF"
+          echo "::notice::Pushed version bump to $REQUIRED; checks will re-run on the new commit."

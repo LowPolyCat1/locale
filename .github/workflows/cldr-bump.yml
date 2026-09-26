@@ -14,8 +14,10 @@ permissions:
 jobs:
   bump:
     runs-on: ubuntu-latest
+    env:
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -52,10 +54,21 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: cargo build -p locale-rs --all-features
 
+      - name: Create bot token
+        id: app
+        if: steps.changes.outputs.changed == 'true' && env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
       - name: Create pull request
         if: steps.changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
+          # The bot app is the only actor allowed to push to cldr-bump/* (ruleset);
+          # unlike GITHUB_TOKEN, its pushes also trigger CI on the PR.
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}
           commit-message: |
             chore: bump CLDR to ${{ steps.meta.outputs.cldr }}
 
@@ -70,18 +83,47 @@ jobs:
             ### Review checklist
             - [ ] Diff in `locale-rs/src/locale.rs` — added/removed `Locale` variants are breaking changes
             - [ ] Diff in `locale-rs/src/{num_formats,datetime_formats,currency_formats}.rs`
-            - [ ] Version bump is appropriate for the changes (see `bump_locale_rs_version` in `locale-dev`)
+            - [ ] Version bump is appropriate for the changes (the `semver` check bumps it further if needed)
 
-            Once merged, push tag `v${{ steps.meta.outputs.crate }}` to trigger the publish workflow.
+            Once merged, the release workflow tags and publishes the new version automatically.
           branch: cldr-bump/${{ steps.meta.outputs.cldr }}
           delete-branch: true
           labels: |
             cldr-bump
             automated
 
+      - name: Close failure issues on success
+        if: success()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'cldr-bump-failure',
+            });
+            for (const issue of issues) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `The CLDR bump workflow succeeded again: ${runUrl}. Closing.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              core.info(`Closed #${issue.number}`);
+            }
+
       - name: Open issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
