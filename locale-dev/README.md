@@ -105,7 +105,7 @@ Generates the `Locale` enum and core locale manipulation methods.
 
 **Generated Code Includes**:
 
-1. **Locale Enum** (766 variants)
+1. **Locale Enum** (<!-- gen:{{locale_count}} -->766<!-- /gen --> variants)
    ```rust
    pub enum Locale {
    }
@@ -258,19 +258,35 @@ override, priv, typeof, unsized, virtual, yield, try
 
 ### Basic Code Generation
 
+<!-- gen:
 ```bash
 # Generate from latest CLDR release
 cargo run -p locale-dev
 
 # Output:
 # Checking GitHub for the latest CLDR asset...
-# Using cached file: cache/cldr-48.1.0-json-full.zip
+# Using cached file: cache/cldr-{{cldr_version}}-json-full.zip
+# generating locales
+# Generated {{locale_count}} locales.
+# Refining generated code in locale-rs...
+# Successfully formatted locale-rs.
+# Clippy checks passed/fixed for locale-rs.
+```
+-->
+```bash
+# Generate from latest CLDR release
+cargo run -p locale-dev
+
+# Output:
+# Checking GitHub for the latest CLDR asset...
+# Using cached file: cache/cldr-48.2.2-json-full.zip
 # generating locales
 # Generated 766 locales.
 # Refining generated code in locale-rs...
 # Successfully formatted locale-rs.
 # Clippy checks passed/fixed for locale-rs.
 ```
+<!-- /gen -->
 
 ### Force Re-download
 
@@ -289,6 +305,24 @@ cargo run -p locale-dev
 # If local cache is up-to-date, it will report:
 # "Local code is already up-to-date. No action needed."
 ```
+
+### Update README Sections
+
+Values that come from the code (CLDR version, locale count, crate version, feature table) are
+generated into the READMEs. Code generation refreshes them automatically; after editing
+`locale-rs/Cargo.toml` by hand, run:
+
+```bash
+cargo run -p locale-dev -- readme          # rewrite the generated sections
+cargo run -p locale-dev -- readme --check  # only report outdated files (exit code 1)
+```
+
+A generated section is an HTML comment `gen:TEMPLATE`, followed by the rendered text and a
+closing `/gen` comment (view the raw Markdown for examples). Edit the template, never the rendered part: the `readme` CI check fails if they disagree. Placeholders are
+`{{cldr_version}}`, `{{locale_count}}`, `{{crate_version}}`, `{{crate_version_req}}` and
+`{{feature_table}}`. A template starting with a line break spans whole lines (badges, code
+blocks, tables). New Cargo features need a description in `FEATURE_DESCRIPTIONS` in
+`src/readme.rs`.
 
 ## Development
 
@@ -353,7 +387,7 @@ pub fn run(
 
 ### Output Size
 
-- `locale.rs`: ~50KB (766 locale variants)
+- `locale.rs`: ~50KB (<!-- gen:{{locale_count}} -->766<!-- /gen --> locale variants)
 - `num_formats.rs`: ~150KB (formatting data)
 - `currency_formats.rs`: ~200KB (currency patterns)
 - `datetime_formats.rs`: ~300KB (datetime data)

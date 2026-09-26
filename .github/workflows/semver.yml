@@ -102,10 +102,12 @@ jobs:
           LEVEL: ${{ steps.check.outputs.level }}
         run: |
           if [ "$SAME_REPO" != "true" ] || [ -z "$PUSH_TOKEN" ]; then
-            echo "::error file=locale-rs/Cargo.toml::This PR needs a $LEVEL release: set locale-rs version to $REQUIRED (and run \`cargo update --workspace\`)."
+            echo "::error file=locale-rs/Cargo.toml::This PR needs a $LEVEL release: set locale-rs version to $REQUIRED (and run \`cargo update --workspace\` and \`cargo run -p locale-dev -- readme\`)."
             exit 1
           fi
-          git add locale-rs/Cargo.toml Cargo.lock
+          # The install snippets in the READMEs name the crate version.
+          cargo run -p locale-dev -- readme
+          git add locale-rs/Cargo.toml Cargo.lock README.md locale-rs/README.md locale-dev/README.md
           git commit -m "chore: bump locale-rs to $REQUIRED ($LEVEL)"
           # Push as the bot app (allowed on cldr-bump/*) instead of GITHUB_TOKEN so
           # CI runs on the new commit.
