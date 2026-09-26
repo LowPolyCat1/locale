@@ -71,10 +71,10 @@ jobs:
           # unlike GITHUB_TOKEN, its pushes also trigger CI on the PR.
           token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}
           commit-message: |
-            chore: bump CLDR to ${{ steps.meta.outputs.cldr }}
+            CLDR: bump to ${{ steps.meta.outputs.cldr }}
 
             Bumps locale-rs to ${{ steps.meta.outputs.crate }}.
-          title: "chore: bump CLDR to ${{ steps.meta.outputs.cldr }}"
+          title: "CLDR: bump to ${{ steps.meta.outputs.cldr }}"
           body: |
             Automated regeneration from upstream CLDR `${{ steps.meta.outputs.cldr }}`.
 
