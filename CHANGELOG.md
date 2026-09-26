@@ -2,6 +2,21 @@
 
 All notable changes to locale-rs are documented here.
 
+## [0.4.0-rc.1](https://github.com/LowPolyCat1/locale-rs/releases/tag/v0.4.0-rc.1) - 2026-09-26
+
+<!-- Release notes generated using configuration in .github/release.yml at v0.4.0-rc.1 -->
+
+### What's Changed
+#### Breaking changes
+* v0.4.0: generated data split from handwritten logic, CLDR-correct formatting, breaking-release policy by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/62
+#### Other changes
+* ci: enable Dependabot auto-merge with the bot token so merges trigger the release workflow by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/59
+* ci: skip Rust workflows on PRs that don't touch relevant files by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/61
+
+
+**Full Changelog**: https://github.com/LowPolyCat1/locale-rs/compare/v0.3.5...v0.4.0-rc.1
+
+
 ## [0.3.5](https://github.com/LowPolyCat1/locale-rs/releases/tag/v0.3.5) - 2026-09-26
 
 <!-- Release notes generated using configuration in .github/release.yml at v0.3.5 -->
