@@ -23,6 +23,9 @@ permissions:
 jobs:
   changelog:
     runs-on: ubuntu-latest
+    concurrency:
+      group: changelog
+      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: write
@@ -64,32 +67,17 @@ jobs:
               --title "locale-rs $VERSION" --notes-file "$RUNNER_TEMP/notes.md"
           fi
 
+      # Rebuilt from master on every run: adds an entry for each released version
+      # newer than the newest one in CHANGELOG.md (not only $TAG), so releases
+      # made while an earlier changelog PR was still open are collected into one PR
+      # instead of producing conflicting PRs.
       - name: Update CHANGELOG.md
+        id: changelog
         shell: bash
         env:
-          VERSION: ${{ steps.notes.outputs.version }}
-        run: |
-          if grep -q "^## \[$VERSION\]" CHANGELOG.md 2>/dev/null; then
-            echo "CHANGELOG.md already has an entry for $VERSION."
-            exit 0
-          fi
-          if [ ! -f CHANGELOG.md ]; then
-            printf '# Changelog\n\nAll notable changes to locale-rs are documented here.\n' > CHANGELOG.md
-          fi
-          date=$(git log -1 --format=%cs "$TAG")
-          {
-            echo "## [$VERSION](${{ github.server_url }}/$REPO/releases/tag/$TAG) - $date"
-            echo
-            # Nest the generated headings below the version heading.
-            sed -E 's/^(#+) /\1# /' "$RUNNER_TEMP/notes.md"
-            echo
-          } > "$RUNNER_TEMP/entry.md"
-          awk -v entry="$RUNNER_TEMP/entry.md" '
-            !done && /^## / { while ((getline l < entry) > 0) print l; done = 1 }
-            { print }
-            END { if (!done) { print ""; while ((getline l < entry) > 0) print l } }
-          ' CHANGELOG.md > "$RUNNER_TEMP/CHANGELOG.md"
-          mv "$RUNNER_TEMP/CHANGELOG.md" CHANGELOG.md
+          GH_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+        run: .github/scripts/update-changelog.sh "$TAG"
 
       - name: Create bot token
         id: app
@@ -101,14 +89,20 @@ jobs:
 
       - name: Open changelog PR
         id: pr
+        if: steps.changelog.outputs.versions != ''
         uses: peter-evans/create-pull-request@v8
         with:
           # Unlike GITHUB_TOKEN, the bot's pushes trigger CI, so the PR can auto-merge.
           token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || github.token }}
-          commit-message: "docs: changelog for ${{ env.TAG }}"
-          title: "docs: changelog for ${{ env.TAG }}"
-          body: Adds the release notes of `${{ env.TAG }}` to `CHANGELOG.md`.
-          branch: changelog/${{ env.TAG }}
+          commit-message: "docs: changelog for ${{ steps.changelog.outputs.versions }}"
+          title: "docs: changelog for ${{ steps.changelog.outputs.versions }}"
+          body: |
+            Adds the release notes of ${{ steps.changelog.outputs.versions }} to `CHANGELOG.md`.
+
+            This branch is regenerated from `master` after every release, so later
+            releases are added to this PR instead of opening a new one.
+          # One fixed branch, reset to master on every run: no conflicts between releases.
+          branch: changelog/update
           delete-branch: true
           add-paths: CHANGELOG.md
           labels: |
