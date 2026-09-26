@@ -177,7 +177,7 @@ impl Locale {{
                 'd' => result.push_str(&format!("{{:0width$}}", dt.day, width = count)),
                 'H' => result.push_str(&format!("{{:0width$}}", dt.hour, width = count)),
                 'h' => {{
-                    let h12 = if dt.hour % 12 == 0 {{ 12 }} else {{ dt.hour % 12 }};
+                    let h12 = if dt.hour.is_multiple_of(12) {{ 12 }} else {{ dt.hour % 12 }};
                     result.push_str(&format!("{{:0width$}}", h12, width = count));
                 }},
                 'm' => result.push_str(&format!("{{:0width$}}", dt.minute, width = count)),

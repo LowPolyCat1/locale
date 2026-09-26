@@ -8,7 +8,7 @@ fn test_all_locales_round_trip() {
     for &locale_str in AVAILABLE_LOCALES.iter() {
         // Test FromStr / try_from
         let locale = Locale::from_str(locale_str)
-            .expect(&format!("Failed to parse valid locale: {}", locale_str));
+            .unwrap_or_else(|_| panic!("Failed to parse valid locale: {}", locale_str));
 
         // Test as_str()
         assert_eq!(locale.as_str(), locale_str);
@@ -54,6 +54,7 @@ fn test_invalid_locale() {
 fn test_traits() {
     let loc1 = Locale::from_str(AVAILABLE_LOCALES[0]).unwrap();
     let loc2 = loc1; // Test Copy
+    #[allow(clippy::clone_on_copy)]
     let loc3 = loc1.clone(); // Test Clone
 
     assert_eq!(loc1, loc2);
@@ -77,10 +78,10 @@ fn test_debug_print() {
 #[test]
 fn test_fallback_logic() {
     // Test 1: Regional to Base
-    if let Ok(regional) = Locale::from_str("en-GB") {
-        if let Some(fallback) = regional.fallback() {
-            assert_eq!(fallback.as_str(), "en");
-        }
+    if let Ok(regional) = Locale::from_str("en-GB")
+        && let Some(fallback) = regional.fallback()
+    {
+        assert_eq!(fallback.as_str(), "en");
     }
 
     // Test 2: Base locale should have no fallback
