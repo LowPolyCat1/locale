@@ -1,7 +1,10 @@
 name: Dependabot auto-merge
 
+# pull_request_target (not pull_request) so the workflow gets the repository's
+# Actions secrets for the bot app: Dependabot-triggered pull_request runs only
+# see Dependabot secrets. Safe here because no PR code is checked out or run.
 on:
-  pull_request:
+  pull_request_target:
     branches: [master]
     types: [opened, reopened, synchronize]
 
@@ -13,10 +16,34 @@ jobs:
   auto-merge:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    env:
+      BOT_CLIENT_ID: ${{ secrets.BOT_CLIENT_ID }}
     steps:
-      # Merges once all required status checks pass.
+      - name: Create bot token
+        id: app
+        if: env.BOT_CLIENT_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      # Merges once all required status checks pass. The merge is attributed to
+      # whoever enabled auto-merge; with GITHUB_TOKEN the resulting push to master
+      # triggers no workflows, so the release workflow would neither publish nor
+      # refresh the other open PRs.
       - name: Enable auto-merge
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          if [ "$FALLBACK" = "true" ]; then
+            echo "::warning::Neither the bot app nor RELEASE_TOKEN is configured; merging with GITHUB_TOKEN will not trigger the release workflow."
+          fi
+          # Auto-merge enabled earlier with GITHUB_TOKEN would still merge as
+          # github-actions; re-enable it with the current token instead.
+          enabled_by=$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest.enabledBy.login // ""')
+          if [ "$FALLBACK" != "true" ] && [[ "$enabled_by" == github-actions* ]]; then
+            gh pr merge --disable-auto "$PR_URL"
+          fi
+          gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          FALLBACK: ${{ steps.app.outputs.token == '' && secrets.RELEASE_TOKEN == '' }}
