@@ -81,6 +81,6 @@ The script behind step 2 can be run locally (requires `cargo-semver-checks`):
   up to date before merging*, so a PR can't merge with a version that was
   checked against an outdated `master` (two PRs releasing the same version).
   Also require a PR and require the status checks `semver`, `test`, `clippy`,
-  `fmt`, `cargo-deny (licenses)` and `build (<os>, stable)` for all three OSes.
+  `fmt`, `MSRV-check`, `cargo-deny (licenses)` and `build (<os>, stable)` for all three OSes.
   Without required checks, auto-merge would merge Dependabot PRs immediately.
 - **`CARGO_REGISTRY_TOKEN` secret**: already used by `publish.yml`.
