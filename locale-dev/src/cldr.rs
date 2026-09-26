@@ -45,6 +45,9 @@ pub struct NumberData {
     pub decimal_pattern: String,
     /// Native digits, unless the default numbering system is `latn`.
     pub digits: Option<[char; 10]>,
+    /// How many digits beyond the primary group a number needs before it is
+    /// grouped at all: with 2, Spanish writes `1000` but `12.345`.
+    pub min_grouping_digits: u8,
 }
 
 impl Default for NumberData {
@@ -55,6 +58,7 @@ impl Default for NumberData {
             minus_sign: "-".into(),
             decimal_pattern: "#,##0.###".into(),
             digits: None,
+            min_grouping_digits: 1,
         }
     }
 }
@@ -331,6 +335,13 @@ fn number_data(
     );
     if system != "latn" {
         data.digits = systems.get(system).copied();
+    }
+    if let Some(min) = numbers["minimumGroupingDigits"]
+        .as_str()
+        .and_then(|m| m.parse::<u8>().ok())
+        .filter(|&m| m >= 1)
+    {
+        data.min_grouping_digits = min;
     }
     (data, currency_pattern)
 }

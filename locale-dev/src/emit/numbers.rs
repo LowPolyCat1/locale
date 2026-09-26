@@ -7,10 +7,13 @@ use crate::patterns::{Grouping, grouping};
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
-pub fn grouping_tokens(g: Grouping) -> TokenStream {
+/// A runtime `Grouping`: the sizes from a pattern plus the locale's
+/// minimum grouping digits.
+pub fn grouping_tokens(g: Grouping, min_grouping_digits: u8) -> TokenStream {
     let primary = Literal::u8_unsuffixed(g.primary);
     let secondary = Literal::u8_unsuffixed(g.secondary);
-    quote!(Grouping { primary: #primary, secondary: #secondary })
+    let min = Literal::u8_unsuffixed(min_grouping_digits);
+    quote!(Grouping { primary: #primary, secondary: #secondary, min_grouping_digits: #min })
 }
 
 pub fn emit(cldr: &Cldr, cldr_version: &str) -> Result<RustFile> {
@@ -31,7 +34,7 @@ pub fn emit(cldr: &Cldr, cldr_version: &str) -> Result<RustFile> {
                 None => quote!(None),
             };
             let (decimal, group, minus) = (&n.decimal, &n.group, &n.minus_sign);
-            let grouping = grouping_tokens(grouping(&n.decimal_pattern));
+            let grouping = grouping_tokens(grouping(&n.decimal_pattern), n.min_grouping_digits);
             let name = symbols.intern(quote! {
                 NumberSymbols {
                     decimal: #decimal,

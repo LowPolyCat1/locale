@@ -140,3 +140,11 @@ fn test_every_locale_formats() {
         assert!(!text.contains('¤') && !text.contains('#'), "{name}: {text}");
     }
 }
+
+#[test]
+fn test_minimum_grouping_digits_in_currency() {
+    assert_eq!(1000.to_currency(&Locale::es), "1000,00\u{a0}€");
+    assert_eq!(10000.to_currency(&Locale::es), "10.000,00\u{a0}€");
+    assert_eq!(1234.5.to_currency(&Locale::pl), "1234,50\u{a0}zł");
+    assert_eq!(1234.5.to_currency(&Locale::en), "$1,234.50");
+}

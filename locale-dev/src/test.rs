@@ -471,6 +471,7 @@ fn emit_locales_writes_enum_map_and_parents() {
 fn emit_numbers_reads_symbols_digits_and_grouping() {
     let numbers = r###"{"main":{"ar":{"numbers":{
         "defaultNumberingSystem":"arab",
+        "minimumGroupingDigits":"2",
         "symbols-numberSystem-arab":{"decimal":"٫","group":"٬","minusSign":"؜-"},
         "decimalFormats-numberSystem-arab":{"standard":"#,##,##0.###"},
         "currencyFormats-numberSystem-arab":{"standard":"#,##0.00 ¤;-#,##0.00 ¤"}}}}}"###;
@@ -484,10 +485,15 @@ fn emit_numbers_reads_symbols_digits_and_grouping() {
     assert_eq!(ar.numbers.decimal, "٫");
     assert_eq!(ar.numbers.digits.map(|d| d[1]), Some('١'));
     assert_eq!(ar.currency_pattern, "#,##0.00 ¤;-#,##0.00 ¤");
+    assert_eq!(ar.numbers.min_grouping_digits, 2);
+    // Locales without the key keep the CLDR default of 1.
+    assert_eq!(cldr.locales[1].numbers.min_grouping_digits, 1);
 
     let text = render(emit::numbers::emit(&cldr, "48.0.0").unwrap());
     assert!(text.contains("primary:3"));
     assert!(text.contains("secondary:2"));
+    assert!(text.contains("min_grouping_digits:2"));
+    assert!(text.contains("min_grouping_digits:1"));
     assert!(text.contains("'٠'"));
     // Identical symbol sets are emitted once: en shares nothing with ar.
     assert_eq!(text.matches("=NumberSymbols{").count(), 2);

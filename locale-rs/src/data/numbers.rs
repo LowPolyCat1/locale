@@ -23,6 +23,7 @@ static NUMBERS_0: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -33,6 +34,7 @@ static NUMBERS_1: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -43,6 +45,7 @@ static NUMBERS_2: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -53,6 +56,7 @@ static NUMBERS_3: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_0),
 };
@@ -63,6 +67,7 @@ static NUMBERS_4: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -73,6 +78,7 @@ static NUMBERS_5: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_1),
 };
@@ -83,6 +89,7 @@ static NUMBERS_6: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -93,6 +100,7 @@ static NUMBERS_7: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_2),
 };
@@ -103,18 +111,20 @@ static NUMBERS_8: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
 static NUMBERS_9: NumberSymbols = NumberSymbols {
-    decimal: ".",
-    group: ",",
+    decimal: ",",
+    group: "\u{a0}",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 2,
     },
-    digits: Some(&DIGITS_3),
+    digits: None,
 };
 static NUMBERS_10: NumberSymbols = NumberSymbols {
     decimal: ".",
@@ -122,9 +132,10 @@ static NUMBERS_10: NumberSymbols = NumberSymbols {
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
-        secondary: 2,
+        secondary: 3,
+        min_grouping_digits: 1,
     },
-    digits: None,
+    digits: Some(&DIGITS_3),
 };
 static NUMBERS_11: NumberSymbols = NumberSymbols {
     decimal: ".",
@@ -133,148 +144,163 @@ static NUMBERS_11: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
+    },
+    digits: None,
+};
+static NUMBERS_12: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 2,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_4),
 };
-static NUMBERS_12: NumberSymbols = NumberSymbols {
+static NUMBERS_13: NumberSymbols = NumberSymbols {
     decimal: "٫",
     group: "٬",
     minus_sign: "\u{200f}-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_0),
 };
-static NUMBERS_13: NumberSymbols = NumberSymbols {
+static NUMBERS_14: NumberSymbols = NumberSymbols {
     decimal: ".",
     group: "'",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
-static NUMBERS_14: NumberSymbols = NumberSymbols {
+static NUMBERS_15: NumberSymbols = NumberSymbols {
     decimal: ".",
     group: ",",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_5),
 };
-static NUMBERS_15: NumberSymbols = NumberSymbols {
+static NUMBERS_16: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 3,
+    },
+    digits: None,
+};
+static NUMBERS_17: NumberSymbols = NumberSymbols {
     decimal: ",",
     group: "\u{202f}",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
-static NUMBERS_16: NumberSymbols = NumberSymbols {
+static NUMBERS_18: NumberSymbols = NumberSymbols {
+    decimal: ",",
+    group: ".",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+    digits: None,
+};
+static NUMBERS_19: NumberSymbols = NumberSymbols {
     decimal: ",",
     group: "\u{a0}",
     minus_sign: "−",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 2,
     },
     digits: None,
 };
-static NUMBERS_17: NumberSymbols = NumberSymbols {
+static NUMBERS_20: NumberSymbols = NumberSymbols {
     decimal: ",",
     group: ".",
     minus_sign: "−",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
-static NUMBERS_18: NumberSymbols = NumberSymbols {
+static NUMBERS_21: NumberSymbols = NumberSymbols {
     decimal: "٫",
     group: "٬",
     minus_sign: "\u{200e}−",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_2),
 };
-static NUMBERS_19: NumberSymbols = NumberSymbols {
+static NUMBERS_22: NumberSymbols = NumberSymbols {
     decimal: ".",
     group: "⹁",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_6),
 };
-static NUMBERS_20: NumberSymbols = NumberSymbols {
+static NUMBERS_23: NumberSymbols = NumberSymbols {
+    decimal: ",",
+    group: "\u{a0}",
+    minus_sign: "−",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
+    },
+    digits: None,
+};
+static NUMBERS_24: NumberSymbols = NumberSymbols {
     decimal: ",",
     group: "'",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
-static NUMBERS_21: NumberSymbols = NumberSymbols {
+static NUMBERS_25: NumberSymbols = NumberSymbols {
     decimal: ".",
     group: "'",
     minus_sign: "−",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: None,
-};
-static NUMBERS_22: NumberSymbols = NumberSymbols {
-    decimal: ".",
-    group: ",",
-    minus_sign: "-",
-    grouping: Grouping {
-        primary: 3,
-        secondary: 3,
-    },
-    digits: Some(&DIGITS_7),
-};
-static NUMBERS_23: NumberSymbols = NumberSymbols {
-    decimal: ".",
-    group: ",",
-    minus_sign: "-",
-    grouping: Grouping {
-        primary: 3,
-        secondary: 3,
-    },
-    digits: Some(&DIGITS_1),
-};
-static NUMBERS_24: NumberSymbols = NumberSymbols {
-    decimal: ".",
-    group: ",",
-    minus_sign: "-",
-    grouping: Grouping {
-        primary: 3,
-        secondary: 3,
-    },
-    digits: Some(&DIGITS_8),
-};
-static NUMBERS_25: NumberSymbols = NumberSymbols {
-    decimal: ".",
-    group: ",",
-    minus_sign: "-",
-    grouping: Grouping {
-        primary: 3,
-        secondary: 2,
-    },
-    digits: Some(&DIGITS_3),
 };
 static NUMBERS_26: NumberSymbols = NumberSymbols {
     decimal: ".",
@@ -283,18 +309,20 @@ static NUMBERS_26: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
-    digits: Some(&DIGITS_9),
+    digits: Some(&DIGITS_7),
 };
 static NUMBERS_27: NumberSymbols = NumberSymbols {
     decimal: ".",
-    group: "،",
+    group: "'",
     minus_sign: "-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 2,
     },
-    digits: Some(&DIGITS_10),
+    digits: None,
 };
 static NUMBERS_28: NumberSymbols = NumberSymbols {
     decimal: ".",
@@ -303,26 +331,95 @@ static NUMBERS_28: NumberSymbols = NumberSymbols {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
+    },
+    digits: Some(&DIGITS_1),
+};
+static NUMBERS_29: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
+    },
+    digits: Some(&DIGITS_8),
+};
+static NUMBERS_30: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 2,
+        min_grouping_digits: 1,
+    },
+    digits: Some(&DIGITS_3),
+};
+static NUMBERS_31: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
+    },
+    digits: Some(&DIGITS_9),
+};
+static NUMBERS_32: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: "،",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
+    },
+    digits: Some(&DIGITS_10),
+};
+static NUMBERS_33: NumberSymbols = NumberSymbols {
+    decimal: ".",
+    group: ",",
+    minus_sign: "-",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_11),
 };
-static NUMBERS_29: NumberSymbols = NumberSymbols {
+static NUMBERS_34: NumberSymbols = NumberSymbols {
     decimal: ".",
     group: "٬",
     minus_sign: "\u{61c}-",
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
     digits: Some(&DIGITS_0),
 };
-static NUMBERS_30: NumberSymbols = NumberSymbols {
+static NUMBERS_35: NumberSymbols = NumberSymbols {
+    decimal: ",",
+    group: ".",
+    minus_sign: "−",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+    digits: None,
+};
+static NUMBERS_36: NumberSymbols = NumberSymbols {
     decimal: ",",
     group: "\u{a0}",
     minus_sign: "-",
     grouping: Grouping {
         primary: 2,
         secondary: 2,
+        min_grouping_digits: 1,
     },
     digits: None,
 };
@@ -383,19 +480,19 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // bal-Arab
     &NUMBERS_0,  // bal-Latn
     &NUMBERS_1,  // bas
-    &NUMBERS_1,  // be
-    &NUMBERS_1,  // be-tarask
+    &NUMBERS_9,  // be
+    &NUMBERS_9,  // be-tarask
     &NUMBERS_0,  // bem
     &NUMBERS_0,  // bew
     &NUMBERS_0,  // bez
-    &NUMBERS_1,  // bg
-    &NUMBERS_9,  // bgc
+    &NUMBERS_9,  // bg
+    &NUMBERS_10, // bgc
     &NUMBERS_7,  // bgn
     &NUMBERS_7,  // bgn-AE
     &NUMBERS_7,  // bgn-AF
     &NUMBERS_7,  // bgn-IR
     &NUMBERS_7,  // bgn-OM
-    &NUMBERS_9,  // bho
+    &NUMBERS_10, // bho
     &NUMBERS_1,  // blo
     &NUMBERS_0,  // blt
     &NUMBERS_0,  // bm
@@ -406,7 +503,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // bo-IN
     &NUMBERS_0,  // bqi
     &NUMBERS_1,  // br
-    &NUMBERS_10, // brx
+    &NUMBERS_11, // brx
     &NUMBERS_6,  // bs
     &NUMBERS_6,  // bs-Cyrl
     &NUMBERS_6,  // bs-Latn
@@ -420,16 +517,16 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // ca-IT
     &NUMBERS_0,  // cad
     &NUMBERS_0,  // cch
-    &NUMBERS_11, // ccp
-    &NUMBERS_11, // ccp-IN
+    &NUMBERS_12, // ccp
+    &NUMBERS_12, // ccp-IN
     &NUMBERS_0,  // ce
     &NUMBERS_0,  // ceb
     &NUMBERS_0,  // cgg
     &NUMBERS_0,  // cho
     &NUMBERS_0,  // chr
     &NUMBERS_0,  // cic
-    &NUMBERS_12, // ckb
-    &NUMBERS_12, // ckb-IR
+    &NUMBERS_13, // ckb
+    &NUMBERS_13, // ckb-IR
     &NUMBERS_0,  // co
     &NUMBERS_0,  // cop
     &NUMBERS_1,  // cs
@@ -443,9 +540,9 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // de
     &NUMBERS_1,  // de-AT
     &NUMBERS_6,  // de-BE
-    &NUMBERS_13, // de-CH
+    &NUMBERS_14, // de-CH
     &NUMBERS_6,  // de-IT
-    &NUMBERS_13, // de-LI
+    &NUMBERS_14, // de-LI
     &NUMBERS_6,  // de-LU
     &NUMBERS_8,  // dje
     &NUMBERS_0,  // doi
@@ -453,10 +550,10 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_1,  // dua
     &NUMBERS_0,  // dv
     &NUMBERS_1,  // dyo
-    &NUMBERS_14, // dz
+    &NUMBERS_15, // dz
     &NUMBERS_0,  // ebu
-    &NUMBERS_0,  // ee
-    &NUMBERS_0,  // ee-TG
+    &NUMBERS_16, // ee
+    &NUMBERS_16, // ee-TG
     &NUMBERS_6,  // el
     &NUMBERS_6,  // el-CY
     &NUMBERS_6,  // el-polyton
@@ -478,7 +575,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // en-BZ
     &NUMBERS_0,  // en-CA
     &NUMBERS_0,  // en-CC
-    &NUMBERS_13, // en-CH
+    &NUMBERS_14, // en-CH
     &NUMBERS_0,  // en-CK
     &NUMBERS_0,  // en-CM
     &NUMBERS_0,  // en-CX
@@ -496,10 +593,10 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // en-FJ
     &NUMBERS_0,  // en-FK
     &NUMBERS_0,  // en-FM
-    &NUMBERS_15, // en-FR
+    &NUMBERS_17, // en-FR
     &NUMBERS_0,  // en-GB
     &NUMBERS_0,  // en-GD
-    &NUMBERS_15, // en-GE
+    &NUMBERS_17, // en-GE
     &NUMBERS_0,  // en-GG
     &NUMBERS_0,  // en-GH
     &NUMBERS_0,  // en-GI
@@ -513,7 +610,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // en-IE
     &NUMBERS_0,  // en-IL
     &NUMBERS_0,  // en-IM
-    &NUMBERS_10, // en-IN
+    &NUMBERS_11, // en-IN
     &NUMBERS_0,  // en-IO
     &NUMBERS_6,  // en-IT
     &NUMBERS_0,  // en-JE
@@ -586,8 +683,8 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_1,  // en-ZA
     &NUMBERS_0,  // en-ZM
     &NUMBERS_0,  // en-ZW
-    &NUMBERS_15, // eo
-    &NUMBERS_6,  // es
+    &NUMBERS_17, // eo
+    &NUMBERS_18, // es
     &NUMBERS_0,  // es-419
     &NUMBERS_6,  // es-AR
     &NUMBERS_6,  // es-BO
@@ -598,41 +695,41 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_1,  // es-CR
     &NUMBERS_0,  // es-CU
     &NUMBERS_0,  // es-DO
-    &NUMBERS_6,  // es-EA
+    &NUMBERS_18, // es-EA
     &NUMBERS_6,  // es-EC
-    &NUMBERS_6,  // es-GQ
+    &NUMBERS_18, // es-GQ
     &NUMBERS_0,  // es-GT
     &NUMBERS_0,  // es-HN
-    &NUMBERS_6,  // es-IC
+    &NUMBERS_18, // es-IC
     &NUMBERS_0,  // es-MX
     &NUMBERS_0,  // es-NI
     &NUMBERS_0,  // es-PA
     &NUMBERS_0,  // es-PE
-    &NUMBERS_6,  // es-PH
+    &NUMBERS_18, // es-PH
     &NUMBERS_0,  // es-PR
     &NUMBERS_6,  // es-PY
     &NUMBERS_0,  // es-SV
     &NUMBERS_0,  // es-US
     &NUMBERS_6,  // es-UY
     &NUMBERS_6,  // es-VE
-    &NUMBERS_16, // et
-    &NUMBERS_17, // eu
+    &NUMBERS_19, // et
+    &NUMBERS_20, // eu
     &NUMBERS_1,  // ewo
-    &NUMBERS_18, // fa
-    &NUMBERS_18, // fa-AF
+    &NUMBERS_21, // fa
+    &NUMBERS_21, // fa-AF
     &NUMBERS_1,  // ff
-    &NUMBERS_19, // ff-Adlm
-    &NUMBERS_19, // ff-Adlm-BF
-    &NUMBERS_19, // ff-Adlm-CM
-    &NUMBERS_19, // ff-Adlm-GH
-    &NUMBERS_19, // ff-Adlm-GM
-    &NUMBERS_19, // ff-Adlm-GW
-    &NUMBERS_19, // ff-Adlm-LR
-    &NUMBERS_19, // ff-Adlm-MR
-    &NUMBERS_19, // ff-Adlm-NE
-    &NUMBERS_19, // ff-Adlm-NG
-    &NUMBERS_19, // ff-Adlm-SL
-    &NUMBERS_19, // ff-Adlm-SN
+    &NUMBERS_22, // ff-Adlm
+    &NUMBERS_22, // ff-Adlm-BF
+    &NUMBERS_22, // ff-Adlm-CM
+    &NUMBERS_22, // ff-Adlm-GH
+    &NUMBERS_22, // ff-Adlm-GM
+    &NUMBERS_22, // ff-Adlm-GW
+    &NUMBERS_22, // ff-Adlm-LR
+    &NUMBERS_22, // ff-Adlm-MR
+    &NUMBERS_22, // ff-Adlm-NE
+    &NUMBERS_22, // ff-Adlm-NG
+    &NUMBERS_22, // ff-Adlm-SL
+    &NUMBERS_22, // ff-Adlm-SN
     &NUMBERS_1,  // ff-Latn
     &NUMBERS_1,  // ff-Latn-BF
     &NUMBERS_1,  // ff-Latn-CM
@@ -645,56 +742,56 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_1,  // ff-Latn-NE
     &NUMBERS_1,  // ff-Latn-NG
     &NUMBERS_1,  // ff-Latn-SL
-    &NUMBERS_16, // fi
+    &NUMBERS_23, // fi
     &NUMBERS_0,  // fil
-    &NUMBERS_17, // fo
-    &NUMBERS_17, // fo-DK
-    &NUMBERS_15, // fr
-    &NUMBERS_15, // fr-BE
-    &NUMBERS_15, // fr-BF
-    &NUMBERS_15, // fr-BI
-    &NUMBERS_15, // fr-BJ
-    &NUMBERS_15, // fr-BL
+    &NUMBERS_20, // fo
+    &NUMBERS_20, // fo-DK
+    &NUMBERS_17, // fr
+    &NUMBERS_17, // fr-BE
+    &NUMBERS_17, // fr-BF
+    &NUMBERS_17, // fr-BI
+    &NUMBERS_17, // fr-BJ
+    &NUMBERS_17, // fr-BL
     &NUMBERS_1,  // fr-CA
-    &NUMBERS_15, // fr-CD
-    &NUMBERS_15, // fr-CF
-    &NUMBERS_15, // fr-CG
-    &NUMBERS_20, // fr-CH
-    &NUMBERS_15, // fr-CI
-    &NUMBERS_15, // fr-CM
-    &NUMBERS_15, // fr-DJ
-    &NUMBERS_15, // fr-DZ
-    &NUMBERS_15, // fr-GA
-    &NUMBERS_15, // fr-GF
-    &NUMBERS_15, // fr-GN
-    &NUMBERS_15, // fr-GP
-    &NUMBERS_15, // fr-GQ
-    &NUMBERS_15, // fr-HT
-    &NUMBERS_15, // fr-KM
+    &NUMBERS_17, // fr-CD
+    &NUMBERS_17, // fr-CF
+    &NUMBERS_17, // fr-CG
+    &NUMBERS_24, // fr-CH
+    &NUMBERS_17, // fr-CI
+    &NUMBERS_17, // fr-CM
+    &NUMBERS_17, // fr-DJ
+    &NUMBERS_17, // fr-DZ
+    &NUMBERS_17, // fr-GA
+    &NUMBERS_17, // fr-GF
+    &NUMBERS_17, // fr-GN
+    &NUMBERS_17, // fr-GP
+    &NUMBERS_17, // fr-GQ
+    &NUMBERS_17, // fr-HT
+    &NUMBERS_17, // fr-KM
     &NUMBERS_6,  // fr-LU
     &NUMBERS_6,  // fr-MA
-    &NUMBERS_15, // fr-MC
-    &NUMBERS_15, // fr-MF
-    &NUMBERS_15, // fr-MG
-    &NUMBERS_15, // fr-ML
-    &NUMBERS_15, // fr-MQ
-    &NUMBERS_15, // fr-MR
-    &NUMBERS_15, // fr-MU
-    &NUMBERS_15, // fr-NC
-    &NUMBERS_15, // fr-NE
-    &NUMBERS_15, // fr-PF
-    &NUMBERS_15, // fr-PM
-    &NUMBERS_15, // fr-RE
-    &NUMBERS_15, // fr-RW
-    &NUMBERS_15, // fr-SC
-    &NUMBERS_15, // fr-SN
-    &NUMBERS_15, // fr-SY
-    &NUMBERS_15, // fr-TD
-    &NUMBERS_15, // fr-TG
-    &NUMBERS_15, // fr-TN
-    &NUMBERS_15, // fr-VU
-    &NUMBERS_15, // fr-WF
-    &NUMBERS_15, // fr-YT
+    &NUMBERS_17, // fr-MC
+    &NUMBERS_17, // fr-MF
+    &NUMBERS_17, // fr-MG
+    &NUMBERS_17, // fr-ML
+    &NUMBERS_17, // fr-MQ
+    &NUMBERS_17, // fr-MR
+    &NUMBERS_17, // fr-MU
+    &NUMBERS_17, // fr-NC
+    &NUMBERS_17, // fr-NE
+    &NUMBERS_17, // fr-PF
+    &NUMBERS_17, // fr-PM
+    &NUMBERS_17, // fr-RE
+    &NUMBERS_17, // fr-RW
+    &NUMBERS_17, // fr-SC
+    &NUMBERS_17, // fr-SN
+    &NUMBERS_17, // fr-SY
+    &NUMBERS_17, // fr-TD
+    &NUMBERS_17, // fr-TG
+    &NUMBERS_17, // fr-TN
+    &NUMBERS_17, // fr-VU
+    &NUMBERS_17, // fr-WF
+    &NUMBERS_17, // fr-YT
     &NUMBERS_0,  // frr
     &NUMBERS_6,  // fur
     &NUMBERS_6,  // fy
@@ -706,10 +803,10 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // gez-ER
     &NUMBERS_6,  // gl
     &NUMBERS_0,  // gn
-    &NUMBERS_21, // gsw
-    &NUMBERS_21, // gsw-FR
-    &NUMBERS_21, // gsw-LI
-    &NUMBERS_10, // gu
+    &NUMBERS_25, // gsw
+    &NUMBERS_25, // gsw-FR
+    &NUMBERS_25, // gsw-LI
+    &NUMBERS_11, // gu
     &NUMBERS_0,  // guz
     &NUMBERS_0,  // gv
     &NUMBERS_0,  // ha
@@ -719,27 +816,27 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // ha-NE
     &NUMBERS_0,  // haw
     &NUMBERS_2,  // he
-    &NUMBERS_10, // hi
-    &NUMBERS_10, // hi-Latn
-    &NUMBERS_22, // hnj
-    &NUMBERS_22, // hnj-Hmnp
-    &NUMBERS_17, // hr
-    &NUMBERS_17, // hr-BA
+    &NUMBERS_11, // hi
+    &NUMBERS_11, // hi-Latn
+    &NUMBERS_26, // hnj
+    &NUMBERS_26, // hnj-Hmnp
+    &NUMBERS_20, // hr
+    &NUMBERS_20, // hr-BA
     &NUMBERS_6,  // hsb
     &NUMBERS_1,  // ht
-    &NUMBERS_1,  // hu
-    &NUMBERS_1,  // hy
-    &NUMBERS_6,  // ia
+    &NUMBERS_9,  // hu
+    &NUMBERS_9,  // hy
+    &NUMBERS_18, // ia
     &NUMBERS_6,  // id
-    &NUMBERS_1,  // ie
+    &NUMBERS_9,  // ie
     &NUMBERS_0,  // ig
     &NUMBERS_0,  // ii
     &NUMBERS_0,  // io
     &NUMBERS_6,  // is
-    &NUMBERS_6,  // it
-    &NUMBERS_13, // it-CH
-    &NUMBERS_6,  // it-SM
-    &NUMBERS_6,  // it-VA
+    &NUMBERS_18, // it
+    &NUMBERS_27, // it-CH
+    &NUMBERS_18, // it-SM
+    &NUMBERS_18, // it-VA
     &NUMBERS_0,  // iu
     &NUMBERS_0,  // iu-Latn
     &NUMBERS_0,  // ja
@@ -747,7 +844,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // jgo
     &NUMBERS_0,  // jmc
     &NUMBERS_6,  // jv
-    &NUMBERS_1,  // ka
+    &NUMBERS_9,  // ka
     &NUMBERS_0,  // kaa
     &NUMBERS_0,  // kaa-Cyrl
     &NUMBERS_0,  // kaa-Latn
@@ -774,9 +871,9 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // ko
     &NUMBERS_0,  // ko-CN
     &NUMBERS_0,  // ko-KP
-    &NUMBERS_10, // kok
-    &NUMBERS_10, // kok-Deva
-    &NUMBERS_10, // kok-Latn
+    &NUMBERS_11, // kok
+    &NUMBERS_11, // kok-Deva
+    &NUMBERS_11, // kok-Latn
     &NUMBERS_0,  // kpe
     &NUMBERS_0,  // kpe-GN
     &NUMBERS_7,  // ks
@@ -784,7 +881,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // ks-Deva
     &NUMBERS_0,  // ksb
     &NUMBERS_1,  // ksf
-    &NUMBERS_16, // ksh
+    &NUMBERS_23, // ksh
     &NUMBERS_6,  // ku
     &NUMBERS_0,  // ku-Arab
     &NUMBERS_0,  // ku-Arab-IR
@@ -793,11 +890,11 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // ku-Latn-SY
     &NUMBERS_6,  // ku-TR
     &NUMBERS_0,  // kw
-    &NUMBERS_10, // kxv
-    &NUMBERS_10, // kxv-Deva
-    &NUMBERS_10, // kxv-Latn
-    &NUMBERS_10, // kxv-Orya
-    &NUMBERS_10, // kxv-Telu
+    &NUMBERS_11, // kxv
+    &NUMBERS_11, // kxv-Deva
+    &NUMBERS_11, // kxv-Latn
+    &NUMBERS_11, // kxv-Orya
+    &NUMBERS_11, // kxv-Telu
     &NUMBERS_1,  // ky
     &NUMBERS_0,  // la
     &NUMBERS_0,  // lag
@@ -806,7 +903,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // lij
     &NUMBERS_0,  // lkt
     &NUMBERS_6,  // lld
-    &NUMBERS_20, // lmo
+    &NUMBERS_24, // lmo
     &NUMBERS_6,  // ln
     &NUMBERS_6,  // ln-AO
     &NUMBERS_6,  // ln-CF
@@ -814,12 +911,12 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // lo
     &NUMBERS_7,  // lrc
     &NUMBERS_7,  // lrc-IQ
-    &NUMBERS_16, // lt
+    &NUMBERS_23, // lt
     &NUMBERS_0,  // ltg
     &NUMBERS_6,  // lu
     &NUMBERS_0,  // luo
     &NUMBERS_0,  // luy
-    &NUMBERS_1,  // lv
+    &NUMBERS_9,  // lv
     &NUMBERS_0,  // lzz
     &NUMBERS_0,  // mai
     &NUMBERS_0,  // mas
@@ -834,15 +931,15 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // mi
     &NUMBERS_0,  // mic
     &NUMBERS_6,  // mk
-    &NUMBERS_10, // ml
+    &NUMBERS_11, // ml
     &NUMBERS_0,  // mn
     &NUMBERS_0,  // mn-Mong
     &NUMBERS_0,  // mn-Mong-MN
-    &NUMBERS_23, // mni
-    &NUMBERS_23, // mni-Beng
-    &NUMBERS_24, // mni-Mtei
+    &NUMBERS_28, // mni
+    &NUMBERS_28, // mni-Beng
+    &NUMBERS_29, // mni-Mtei
     &NUMBERS_0,  // moh
-    &NUMBERS_25, // mr
+    &NUMBERS_30, // mr
     &NUMBERS_0,  // ms
     &NUMBERS_0,  // ms-Arab
     &NUMBERS_6,  // ms-Arab-BN
@@ -852,19 +949,19 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // mt
     &NUMBERS_6,  // mua
     &NUMBERS_0,  // mus
-    &NUMBERS_22, // mww
-    &NUMBERS_22, // mww-Hmnp
-    &NUMBERS_26, // my
+    &NUMBERS_26, // mww
+    &NUMBERS_26, // mww-Hmnp
+    &NUMBERS_31, // my
     &NUMBERS_0,  // myv
     &NUMBERS_7,  // mzn
     &NUMBERS_0,  // naq
-    &NUMBERS_16, // nb
-    &NUMBERS_16, // nb-SJ
+    &NUMBERS_23, // nb
+    &NUMBERS_23, // nb-SJ
     &NUMBERS_0,  // nd
     &NUMBERS_6,  // nds
     &NUMBERS_6,  // nds-NL
-    &NUMBERS_25, // ne
-    &NUMBERS_25, // ne-IN
+    &NUMBERS_30, // ne
+    &NUMBERS_30, // ne-IN
     &NUMBERS_6,  // nl
     &NUMBERS_6,  // nl-AW
     &NUMBERS_6,  // nl-BE
@@ -873,10 +970,10 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_6,  // nl-SR
     &NUMBERS_6,  // nl-SX
     &NUMBERS_1,  // nmg
-    &NUMBERS_16, // nn
+    &NUMBERS_23, // nn
     &NUMBERS_6,  // nnh
-    &NUMBERS_16, // no
-    &NUMBERS_27, // nqo
+    &NUMBERS_23, // no
+    &NUMBERS_32, // nqo
     &NUMBERS_1,  // nr
     &NUMBERS_0,  // nso
     &NUMBERS_0,  // nus
@@ -889,46 +986,46 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // oka-US
     &NUMBERS_0,  // om
     &NUMBERS_0,  // om-KE
-    &NUMBERS_10, // or
+    &NUMBERS_11, // or
     &NUMBERS_1,  // os
     &NUMBERS_1,  // os-RU
     &NUMBERS_0,  // osa
-    &NUMBERS_10, // pa
+    &NUMBERS_11, // pa
     &NUMBERS_7,  // pa-Arab
-    &NUMBERS_10, // pa-Guru
+    &NUMBERS_11, // pa-Guru
     &NUMBERS_0,  // pap
     &NUMBERS_0,  // pap-AW
     &NUMBERS_0,  // pcm
     &NUMBERS_0,  // pi
     &NUMBERS_0,  // pi-Latn
     &NUMBERS_0,  // pis
-    &NUMBERS_1,  // pl
+    &NUMBERS_9,  // pl
     &NUMBERS_6,  // pms
     &NUMBERS_1,  // prg
     &NUMBERS_7,  // ps
     &NUMBERS_7,  // ps-PK
     &NUMBERS_6,  // pt
     &NUMBERS_1,  // pt-AO
-    &NUMBERS_1,  // pt-CH
-    &NUMBERS_1,  // pt-CV
-    &NUMBERS_1,  // pt-GQ
-    &NUMBERS_1,  // pt-GW
-    &NUMBERS_1,  // pt-LU
-    &NUMBERS_1,  // pt-MO
-    &NUMBERS_1,  // pt-MZ
-    &NUMBERS_1,  // pt-PT
-    &NUMBERS_1,  // pt-ST
-    &NUMBERS_1,  // pt-TL
+    &NUMBERS_9,  // pt-CH
+    &NUMBERS_9,  // pt-CV
+    &NUMBERS_9,  // pt-GQ
+    &NUMBERS_9,  // pt-GW
+    &NUMBERS_9,  // pt-LU
+    &NUMBERS_9,  // pt-MO
+    &NUMBERS_9,  // pt-MZ
+    &NUMBERS_9,  // pt-PT
+    &NUMBERS_9,  // pt-ST
+    &NUMBERS_9,  // pt-TL
     &NUMBERS_0,  // qu
     &NUMBERS_6,  // qu-BO
     &NUMBERS_0,  // qu-EC
     &NUMBERS_0,  // quc
-    &NUMBERS_9,  // raj
+    &NUMBERS_10, // raj
     &NUMBERS_0,  // rhg
     &NUMBERS_0,  // rhg-Rohg
     &NUMBERS_0,  // rhg-Rohg-BD
     &NUMBERS_0,  // rif
-    &NUMBERS_15, // rm
+    &NUMBERS_17, // rm
     &NUMBERS_6,  // rn
     &NUMBERS_6,  // ro
     &NUMBERS_6,  // ro-MD
@@ -938,26 +1035,26 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_1,  // ru-KG
     &NUMBERS_1,  // ru-KZ
     &NUMBERS_1,  // ru-MD
-    &NUMBERS_1,  // ru-UA
+    &NUMBERS_9,  // ru-UA
     &NUMBERS_6,  // rw
     &NUMBERS_0,  // rwk
-    &NUMBERS_25, // sa
+    &NUMBERS_30, // sa
     &NUMBERS_1,  // sah
     &NUMBERS_0,  // saq
-    &NUMBERS_28, // sat
-    &NUMBERS_9,  // sat-Deva
-    &NUMBERS_28, // sat-Olck
+    &NUMBERS_33, // sat
+    &NUMBERS_10, // sat-Deva
+    &NUMBERS_33, // sat-Olck
     &NUMBERS_0,  // sbp
     &NUMBERS_6,  // sc
     &NUMBERS_6,  // scn
-    &NUMBERS_29, // sd
-    &NUMBERS_29, // sd-Arab
+    &NUMBERS_34, // sd
+    &NUMBERS_34, // sd-Arab
     &NUMBERS_0,  // sd-Deva
     &NUMBERS_3,  // sdh
     &NUMBERS_3,  // sdh-IQ
-    &NUMBERS_16, // se
-    &NUMBERS_16, // se-FI
-    &NUMBERS_16, // se-SE
+    &NUMBERS_23, // se
+    &NUMBERS_23, // se-FI
+    &NUMBERS_23, // se-SE
     &NUMBERS_6,  // seh
     &NUMBERS_8,  // ses
     &NUMBERS_6,  // sg
@@ -971,7 +1068,7 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // sid
     &NUMBERS_1,  // sk
     &NUMBERS_0,  // skr
-    &NUMBERS_17, // sl
+    &NUMBERS_35, // sl
     &NUMBERS_0,  // sma
     &NUMBERS_0,  // sma-NO
     &NUMBERS_0,  // smj
@@ -983,9 +1080,9 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // so-DJ
     &NUMBERS_0,  // so-ET
     &NUMBERS_0,  // so-KE
-    &NUMBERS_1,  // sq
-    &NUMBERS_1,  // sq-MK
-    &NUMBERS_1,  // sq-XK
+    &NUMBERS_9,  // sq
+    &NUMBERS_9,  // sq-MK
+    &NUMBERS_9,  // sq-XK
     &NUMBERS_6,  // sr
     &NUMBERS_6,  // sr-Cyrl
     &NUMBERS_6,  // sr-Cyrl-BA
@@ -1005,9 +1102,9 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // suz
     &NUMBERS_0,  // suz-Deva
     &NUMBERS_0,  // suz-Sunu
-    &NUMBERS_16, // sv
-    &NUMBERS_16, // sv-AX
-    &NUMBERS_16, // sv-FI
+    &NUMBERS_23, // sv
+    &NUMBERS_23, // sv-AX
+    &NUMBERS_23, // sv-FI
     &NUMBERS_0,  // sw
     &NUMBERS_6,  // sw-CD
     &NUMBERS_0,  // sw-KE
@@ -1015,11 +1112,11 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // syr
     &NUMBERS_0,  // syr-SY
     &NUMBERS_1,  // szl
-    &NUMBERS_10, // ta
-    &NUMBERS_10, // ta-LK
+    &NUMBERS_11, // ta
+    &NUMBERS_11, // ta-LK
     &NUMBERS_0,  // ta-MY
     &NUMBERS_0,  // ta-SG
-    &NUMBERS_10, // te
+    &NUMBERS_11, // te
     &NUMBERS_0,  // teo
     &NUMBERS_0,  // teo-KE
     &NUMBERS_1,  // tg
@@ -1028,10 +1125,10 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // ti-ER
     &NUMBERS_0,  // tig
     &NUMBERS_1,  // tk
-    &NUMBERS_13, // tn
-    &NUMBERS_13, // tn-BW
+    &NUMBERS_14, // tn
+    &NUMBERS_14, // tn-BW
     &NUMBERS_0,  // to
-    &NUMBERS_30, // tok
+    &NUMBERS_36, // tok
     &NUMBERS_0,  // tpi
     &NUMBERS_6,  // tr
     &NUMBERS_6,  // tr-CY
@@ -1055,18 +1152,18 @@ pub(crate) static NUMBER_SYMBOLS: [&NumberSymbols; 766] = [
     &NUMBERS_0,  // vai-Latn
     &NUMBERS_0,  // vai-Vaii
     &NUMBERS_1,  // ve
-    &NUMBERS_15, // vec
+    &NUMBERS_17, // vec
     &NUMBERS_6,  // vi
     &NUMBERS_6,  // vmw
     &NUMBERS_0,  // vo
     &NUMBERS_0,  // vun
     &NUMBERS_0,  // wa
-    &NUMBERS_20, // wae
+    &NUMBERS_24, // wae
     &NUMBERS_0,  // wal
     &NUMBERS_0,  // wbp
     &NUMBERS_6,  // wo
     &NUMBERS_8,  // xh
-    &NUMBERS_10, // xnr
+    &NUMBERS_11, // xnr
     &NUMBERS_0,  // xog
     &NUMBERS_1,  // yav
     &NUMBERS_0,  // yi

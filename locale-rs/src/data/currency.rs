@@ -70,6 +70,7 @@ static PATTERN_0: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_1: CurrencyPattern = CurrencyPattern {
@@ -80,6 +81,7 @@ static PATTERN_1: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_2: CurrencyPattern = CurrencyPattern {
@@ -90,6 +92,7 @@ static PATTERN_2: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_3: CurrencyPattern = CurrencyPattern {
@@ -100,6 +103,7 @@ static PATTERN_3: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_4: CurrencyPattern = CurrencyPattern {
@@ -110,6 +114,7 @@ static PATTERN_4: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_5: CurrencyPattern = CurrencyPattern {
@@ -120,6 +125,7 @@ static PATTERN_5: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_6: CurrencyPattern = CurrencyPattern {
@@ -130,6 +136,7 @@ static PATTERN_6: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_7: CurrencyPattern = CurrencyPattern {
@@ -140,9 +147,21 @@ static PATTERN_7: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static PATTERN_8: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "",
+    positive_suffix: "\u{a0}¤",
+    negative_prefix: "-",
+    negative_suffix: "\u{a0}¤",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+};
+static PATTERN_9: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤\u{a0}",
     positive_suffix: "",
     negative_prefix: "¤\u{a0}-",
@@ -150,9 +169,10 @@ static PATTERN_8: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_9: CurrencyPattern = CurrencyPattern {
+static PATTERN_10: CurrencyPattern = CurrencyPattern {
     positive_prefix: "",
     positive_suffix: "¤",
     negative_prefix: "-",
@@ -160,9 +180,10 @@ static PATTERN_9: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_10: CurrencyPattern = CurrencyPattern {
+static PATTERN_11: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "-¤",
@@ -170,9 +191,10 @@ static PATTERN_10: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 2,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_11: CurrencyPattern = CurrencyPattern {
+static PATTERN_12: CurrencyPattern = CurrencyPattern {
     positive_prefix: "",
     positive_suffix: "\u{a0}¤",
     negative_prefix: "\u{200f}-",
@@ -180,9 +202,10 @@ static PATTERN_11: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_12: CurrencyPattern = CurrencyPattern {
+static PATTERN_13: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤\u{a0}",
     positive_suffix: "",
     negative_prefix: "¤-",
@@ -190,9 +213,21 @@ static PATTERN_12: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_13: CurrencyPattern = CurrencyPattern {
+static PATTERN_14: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "¤",
+    positive_suffix: "",
+    negative_prefix: "-¤",
+    negative_suffix: "",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 3,
+    },
+};
+static PATTERN_15: CurrencyPattern = CurrencyPattern {
     positive_prefix: "",
     positive_suffix: "\u{202f}¤",
     negative_prefix: "-",
@@ -200,9 +235,10 @@ static PATTERN_13: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_14: CurrencyPattern = CurrencyPattern {
+static PATTERN_16: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "¤-",
@@ -210,9 +246,21 @@ static PATTERN_14: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_15: CurrencyPattern = CurrencyPattern {
+static PATTERN_17: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "¤",
+    positive_suffix: "",
+    negative_prefix: "-¤",
+    negative_suffix: "",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+};
+static PATTERN_18: CurrencyPattern = CurrencyPattern {
     positive_prefix: "",
     positive_suffix: "\u{a0}¤",
     negative_prefix: "−",
@@ -220,9 +268,21 @@ static PATTERN_15: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 2,
     },
 };
-static PATTERN_16: CurrencyPattern = CurrencyPattern {
+static PATTERN_19: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "",
+    positive_suffix: "\u{a0}¤",
+    negative_prefix: "−",
+    negative_suffix: "\u{a0}¤",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 1,
+    },
+};
+static PATTERN_20: CurrencyPattern = CurrencyPattern {
     positive_prefix: "\u{200e}¤",
     positive_suffix: "",
     negative_prefix: "\u{200e}−\u{200e}¤",
@@ -230,9 +290,10 @@ static PATTERN_16: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_17: CurrencyPattern = CurrencyPattern {
+static PATTERN_21: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤\u{a0}",
     positive_suffix: "",
     negative_prefix: "\u{200e}−¤\u{a0}",
@@ -240,9 +301,10 @@ static PATTERN_17: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_18: CurrencyPattern = CurrencyPattern {
+static PATTERN_22: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤\u{a0}",
     positive_suffix: "",
     negative_prefix: "¤\u{a0}",
@@ -250,9 +312,10 @@ static PATTERN_18: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_19: CurrencyPattern = CurrencyPattern {
+static PATTERN_23: CurrencyPattern = CurrencyPattern {
     positive_prefix: "\u{200f}",
     positive_suffix: "\u{a0}\u{200f}¤",
     negative_prefix: "\u{200f}\u{200e}-",
@@ -260,9 +323,43 @@ static PATTERN_19: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_20: CurrencyPattern = CurrencyPattern {
+static PATTERN_24: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "¤\u{a0}",
+    positive_suffix: "",
+    negative_prefix: "-¤\u{a0}",
+    negative_suffix: "",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+};
+static PATTERN_25: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "¤\u{a0}",
+    positive_suffix: "",
+    negative_prefix: "¤\u{a0}-",
+    negative_suffix: "",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+};
+static PATTERN_26: CurrencyPattern = CurrencyPattern {
+    positive_prefix: "¤\u{a0}",
+    positive_suffix: "",
+    negative_prefix: "¤-",
+    negative_suffix: "",
+    grouping: Grouping {
+        primary: 3,
+        secondary: 3,
+        min_grouping_digits: 2,
+    },
+};
+static PATTERN_27: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "\u{200e}-\u{200e}¤",
@@ -270,9 +367,10 @@ static PATTERN_20: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_21: CurrencyPattern = CurrencyPattern {
+static PATTERN_28: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "¤-\u{a0}",
@@ -280,9 +378,10 @@ static PATTERN_21: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_22: CurrencyPattern = CurrencyPattern {
+static PATTERN_29: CurrencyPattern = CurrencyPattern {
     positive_prefix: "",
     positive_suffix: "\u{a0}¤",
     negative_prefix: "\u{61c}-",
@@ -290,9 +389,10 @@ static PATTERN_22: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_23: CurrencyPattern = CurrencyPattern {
+static PATTERN_30: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "-¤",
@@ -300,9 +400,10 @@ static PATTERN_23: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 2,
         secondary: 2,
+        min_grouping_digits: 1,
     },
 };
-static PATTERN_24: CurrencyPattern = CurrencyPattern {
+static PATTERN_31: CurrencyPattern = CurrencyPattern {
     positive_prefix: "¤",
     positive_suffix: "",
     negative_prefix: "\u{200e}-¤",
@@ -310,6 +411,7 @@ static PATTERN_24: CurrencyPattern = CurrencyPattern {
     grouping: Grouping {
         primary: 3,
         secondary: 3,
+        min_grouping_digits: 1,
     },
 };
 static SYMBOLS_0: [(Currency, &str); 24] = [
@@ -4876,12 +4978,12 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // bal-Arab
     &PATTERN_0,  // bal-Latn
     &PATTERN_6,  // bas
-    &PATTERN_6,  // be
-    &PATTERN_6,  // be-tarask
+    &PATTERN_8,  // be
+    &PATTERN_8,  // be-tarask
     &PATTERN_1,  // bem
     &PATTERN_0,  // bew
     &PATTERN_2,  // bez
-    &PATTERN_6,  // bg
+    &PATTERN_8,  // bg
     &PATTERN_0,  // bgc
     &PATTERN_7,  // bgn
     &PATTERN_7,  // bgn-AE
@@ -4889,12 +4991,12 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_7,  // bgn-IR
     &PATTERN_7,  // bgn-OM
     &PATTERN_1,  // bho
-    &PATTERN_8,  // blo
+    &PATTERN_9,  // blo
     &PATTERN_0,  // blt
     &PATTERN_1,  // bm
     &PATTERN_0,  // bm-Nkoo
-    &PATTERN_9,  // bn
-    &PATTERN_10, // bn-IN
+    &PATTERN_10, // bn
+    &PATTERN_11, // bn-IN
     &PATTERN_0,  // bo
     &PATTERN_0,  // bo-IN
     &PATTERN_0,  // bqi
@@ -4913,16 +5015,16 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // ca-IT
     &PATTERN_0,  // cad
     &PATTERN_0,  // cch
-    &PATTERN_9,  // ccp
-    &PATTERN_9,  // ccp-IN
+    &PATTERN_10, // ccp
+    &PATTERN_10, // ccp-IN
     &PATTERN_6,  // ce
     &PATTERN_1,  // ceb
     &PATTERN_1,  // cgg
     &PATTERN_0,  // cho
     &PATTERN_1,  // chr
     &PATTERN_0,  // cic
-    &PATTERN_11, // ckb
-    &PATTERN_11, // ckb-IR
+    &PATTERN_12, // ckb
+    &PATTERN_12, // ckb-IR
     &PATTERN_0,  // co
     &PATTERN_0,  // cop
     &PATTERN_6,  // cs
@@ -4936,7 +5038,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // de
     &PATTERN_0,  // de-AT
     &PATTERN_6,  // de-BE
-    &PATTERN_12, // de-CH
+    &PATTERN_13, // de-CH
     &PATTERN_6,  // de-IT
     &PATTERN_0,  // de-LI
     &PATTERN_6,  // de-LU
@@ -4946,10 +5048,10 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // dua
     &PATTERN_0,  // dv
     &PATTERN_6,  // dyo
-    &PATTERN_10, // dz
+    &PATTERN_11, // dz
     &PATTERN_1,  // ebu
-    &PATTERN_1,  // ee
-    &PATTERN_1,  // ee-TG
+    &PATTERN_14, // ee
+    &PATTERN_14, // ee-TG
     &PATTERN_6,  // el
     &PATTERN_6,  // el-CY
     &PATTERN_6,  // el-polyton
@@ -4971,7 +5073,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // en-BZ
     &PATTERN_1,  // en-CA
     &PATTERN_1,  // en-CC
-    &PATTERN_12, // en-CH
+    &PATTERN_13, // en-CH
     &PATTERN_1,  // en-CK
     &PATTERN_1,  // en-CM
     &PATTERN_1,  // en-CX
@@ -5006,7 +5108,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // en-IE
     &PATTERN_1,  // en-IL
     &PATTERN_1,  // en-IM
-    &PATTERN_10, // en-IN
+    &PATTERN_11, // en-IN
     &PATTERN_1,  // en-IO
     &PATTERN_6,  // en-IT
     &PATTERN_1,  // en-JE
@@ -5034,7 +5136,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // en-NA
     &PATTERN_1,  // en-NF
     &PATTERN_1,  // en-NG
-    &PATTERN_8,  // en-NL
+    &PATTERN_9,  // en-NL
     &PATTERN_6,  // en-NO
     &PATTERN_1,  // en-NR
     &PATTERN_1,  // en-NU
@@ -5079,40 +5181,40 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // en-ZA
     &PATTERN_1,  // en-ZM
     &PATTERN_1,  // en-ZW
-    &PATTERN_13, // eo
-    &PATTERN_6,  // es
+    &PATTERN_15, // eo
+    &PATTERN_8,  // es
     &PATTERN_1,  // es-419
     &PATTERN_0,  // es-AR
     &PATTERN_1,  // es-BO
     &PATTERN_1,  // es-BR
     &PATTERN_1,  // es-BZ
-    &PATTERN_14, // es-CL
+    &PATTERN_16, // es-CL
     &PATTERN_0,  // es-CO
     &PATTERN_1,  // es-CR
     &PATTERN_1,  // es-CU
     &PATTERN_1,  // es-DO
-    &PATTERN_6,  // es-EA
-    &PATTERN_14, // es-EC
-    &PATTERN_1,  // es-GQ
+    &PATTERN_8,  // es-EA
+    &PATTERN_16, // es-EC
+    &PATTERN_17, // es-GQ
     &PATTERN_1,  // es-GT
     &PATTERN_1,  // es-HN
-    &PATTERN_6,  // es-IC
+    &PATTERN_8,  // es-IC
     &PATTERN_1,  // es-MX
     &PATTERN_1,  // es-NI
     &PATTERN_1,  // es-PA
     &PATTERN_0,  // es-PE
-    &PATTERN_6,  // es-PH
+    &PATTERN_8,  // es-PH
     &PATTERN_1,  // es-PR
-    &PATTERN_8,  // es-PY
+    &PATTERN_9,  // es-PY
     &PATTERN_1,  // es-SV
     &PATTERN_1,  // es-US
     &PATTERN_0,  // es-UY
-    &PATTERN_14, // es-VE
-    &PATTERN_15, // et
-    &PATTERN_15, // eu
+    &PATTERN_16, // es-VE
+    &PATTERN_18, // et
+    &PATTERN_19, // eu
     &PATTERN_6,  // ewo
-    &PATTERN_16, // fa
-    &PATTERN_17, // fa-AF
+    &PATTERN_20, // fa
+    &PATTERN_21, // fa-AF
     &PATTERN_6,  // ff
     &PATTERN_0,  // ff-Adlm
     &PATTERN_0,  // ff-Adlm-BF
@@ -5138,10 +5240,10 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // ff-Latn-NE
     &PATTERN_6,  // ff-Latn-NG
     &PATTERN_6,  // ff-Latn-SL
-    &PATTERN_15, // fi
+    &PATTERN_19, // fi
     &PATTERN_1,  // fil
-    &PATTERN_15, // fo
-    &PATTERN_15, // fo-DK
+    &PATTERN_19, // fo
+    &PATTERN_19, // fo-DK
     &PATTERN_6,  // fr
     &PATTERN_6,  // fr-BE
     &PATTERN_6,  // fr-BF
@@ -5190,7 +5292,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // fr-YT
     &PATTERN_0,  // frr
     &PATTERN_0,  // fur
-    &PATTERN_18, // fy
+    &PATTERN_22, // fy
     &PATTERN_1,  // ga
     &PATTERN_1,  // ga-GB
     &PATTERN_0,  // gaa
@@ -5199,10 +5301,10 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // gez-ER
     &PATTERN_6,  // gl
     &PATTERN_0,  // gn
-    &PATTERN_15, // gsw
-    &PATTERN_15, // gsw-FR
-    &PATTERN_15, // gsw-LI
-    &PATTERN_10, // gu
+    &PATTERN_19, // gsw
+    &PATTERN_19, // gsw-FR
+    &PATTERN_19, // gsw-LI
+    &PATTERN_11, // gu
     &PATTERN_1,  // guz
     &PATTERN_1,  // gv
     &PATTERN_0,  // ha
@@ -5211,28 +5313,28 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // ha-GH
     &PATTERN_0,  // ha-NE
     &PATTERN_1,  // haw
-    &PATTERN_19, // he
-    &PATTERN_10, // hi
-    &PATTERN_10, // hi-Latn
+    &PATTERN_23, // he
+    &PATTERN_11, // hi
+    &PATTERN_11, // hi-Latn
     &PATTERN_0,  // hnj
     &PATTERN_0,  // hnj-Hmnp
-    &PATTERN_15, // hr
-    &PATTERN_15, // hr-BA
+    &PATTERN_19, // hr
+    &PATTERN_19, // hr-BA
     &PATTERN_6,  // hsb
     &PATTERN_6,  // ht
-    &PATTERN_6,  // hu
-    &PATTERN_6,  // hy
-    &PATTERN_0,  // ia
+    &PATTERN_8,  // hu
+    &PATTERN_8,  // hy
+    &PATTERN_24, // ia
     &PATTERN_1,  // id
-    &PATTERN_8,  // ie
+    &PATTERN_25, // ie
     &PATTERN_1,  // ig
     &PATTERN_0,  // ii
     &PATTERN_0,  // io
     &PATTERN_6,  // is
-    &PATTERN_6,  // it
-    &PATTERN_12, // it-CH
-    &PATTERN_6,  // it-SM
-    &PATTERN_6,  // it-VA
+    &PATTERN_8,  // it
+    &PATTERN_26, // it-CH
+    &PATTERN_8,  // it-SM
+    &PATTERN_8,  // it-VA
     &PATTERN_0,  // iu
     &PATTERN_0,  // iu-Latn
     &PATTERN_1,  // ja
@@ -5240,7 +5342,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // jgo
     &PATTERN_1,  // jmc
     &PATTERN_0,  // jv
-    &PATTERN_6,  // ka
+    &PATTERN_8,  // ka
     &PATTERN_0,  // kaa
     &PATTERN_0,  // kaa-Cyrl
     &PATTERN_0,  // kaa-Latn
@@ -5260,24 +5362,24 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // kk-Cyrl
     &PATTERN_6,  // kk-KZ
     &PATTERN_0,  // kkj
-    &PATTERN_14, // kl
+    &PATTERN_16, // kl
     &PATTERN_1,  // kln
     &PATTERN_2,  // km
     &PATTERN_1,  // kn
     &PATTERN_1,  // ko
     &PATTERN_1,  // ko-CN
     &PATTERN_1,  // ko-KP
-    &PATTERN_10, // kok
-    &PATTERN_10, // kok-Deva
-    &PATTERN_10, // kok-Latn
+    &PATTERN_11, // kok
+    &PATTERN_11, // kok-Deva
+    &PATTERN_11, // kok-Latn
     &PATTERN_0,  // kpe
     &PATTERN_0,  // kpe-GN
-    &PATTERN_20, // ks
-    &PATTERN_20, // ks-Arab
+    &PATTERN_27, // ks
+    &PATTERN_27, // ks-Arab
     &PATTERN_0,  // ks-Deva
     &PATTERN_2,  // ksb
     &PATTERN_6,  // ksf
-    &PATTERN_15, // ksh
+    &PATTERN_19, // ksh
     &PATTERN_6,  // ku
     &PATTERN_0,  // ku-Arab
     &PATTERN_0,  // ku-Arab-IR
@@ -5286,11 +5388,11 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // ku-Latn-SY
     &PATTERN_6,  // ku-TR
     &PATTERN_1,  // kw
-    &PATTERN_10, // kxv
-    &PATTERN_10, // kxv-Deva
-    &PATTERN_10, // kxv-Latn
-    &PATTERN_10, // kxv-Orya
-    &PATTERN_10, // kxv-Telu
+    &PATTERN_11, // kxv
+    &PATTERN_11, // kxv-Deva
+    &PATTERN_11, // kxv-Latn
+    &PATTERN_11, // kxv-Orya
+    &PATTERN_11, // kxv-Telu
     &PATTERN_6,  // ky
     &PATTERN_0,  // la
     &PATTERN_0,  // lag
@@ -5304,15 +5406,15 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // ln-AO
     &PATTERN_6,  // ln-CF
     &PATTERN_6,  // ln-CG
-    &PATTERN_14, // lo
+    &PATTERN_16, // lo
     &PATTERN_7,  // lrc
     &PATTERN_7,  // lrc-IQ
-    &PATTERN_15, // lt
+    &PATTERN_19, // lt
     &PATTERN_0,  // ltg
     &PATTERN_2,  // lu
     &PATTERN_2,  // luo
-    &PATTERN_21, // luy
-    &PATTERN_6,  // lv
+    &PATTERN_28, // luy
+    &PATTERN_8,  // lv
     &PATTERN_0,  // lzz
     &PATTERN_0,  // mai
     &PATTERN_1,  // mas
@@ -5351,24 +5453,24 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // myv
     &PATTERN_7,  // mzn
     &PATTERN_1,  // naq
-    &PATTERN_15, // nb
-    &PATTERN_15, // nb-SJ
+    &PATTERN_19, // nb
+    &PATTERN_19, // nb-SJ
     &PATTERN_1,  // nd
     &PATTERN_6,  // nds
     &PATTERN_6,  // nds-NL
     &PATTERN_5,  // ne
     &PATTERN_5,  // ne-IN
-    &PATTERN_8,  // nl
-    &PATTERN_8,  // nl-AW
-    &PATTERN_8,  // nl-BE
-    &PATTERN_8,  // nl-BQ
-    &PATTERN_8,  // nl-CW
-    &PATTERN_8,  // nl-SR
-    &PATTERN_8,  // nl-SX
+    &PATTERN_9,  // nl
+    &PATTERN_9,  // nl-AW
+    &PATTERN_9,  // nl-BE
+    &PATTERN_9,  // nl-BQ
+    &PATTERN_9,  // nl-CW
+    &PATTERN_9,  // nl-SR
+    &PATTERN_9,  // nl-SX
     &PATTERN_6,  // nmg
-    &PATTERN_15, // nn
+    &PATTERN_19, // nn
     &PATTERN_0,  // nnh
-    &PATTERN_15, // no
+    &PATTERN_19, // no
     &PATTERN_0,  // nqo
     &PATTERN_1,  // nr
     &PATTERN_0,  // nso
@@ -5386,32 +5488,32 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // os
     &PATTERN_0,  // os-RU
     &PATTERN_0,  // osa
-    &PATTERN_10, // pa
+    &PATTERN_11, // pa
     &PATTERN_7,  // pa-Arab
-    &PATTERN_10, // pa-Guru
+    &PATTERN_11, // pa-Guru
     &PATTERN_0,  // pap
     &PATTERN_0,  // pap-AW
     &PATTERN_1,  // pcm
     &PATTERN_0,  // pi
     &PATTERN_0,  // pi-Latn
     &PATTERN_0,  // pis
-    &PATTERN_6,  // pl
+    &PATTERN_8,  // pl
     &PATTERN_6,  // pms
     &PATTERN_6,  // prg
     &PATTERN_7,  // ps
     &PATTERN_7,  // ps-PK
     &PATTERN_0,  // pt
     &PATTERN_6,  // pt-AO
-    &PATTERN_6,  // pt-CH
-    &PATTERN_6,  // pt-CV
-    &PATTERN_6,  // pt-GQ
-    &PATTERN_6,  // pt-GW
-    &PATTERN_6,  // pt-LU
-    &PATTERN_6,  // pt-MO
-    &PATTERN_6,  // pt-MZ
-    &PATTERN_6,  // pt-PT
-    &PATTERN_6,  // pt-ST
-    &PATTERN_6,  // pt-TL
+    &PATTERN_8,  // pt-CH
+    &PATTERN_8,  // pt-CV
+    &PATTERN_8,  // pt-GQ
+    &PATTERN_8,  // pt-GW
+    &PATTERN_8,  // pt-LU
+    &PATTERN_8,  // pt-MO
+    &PATTERN_8,  // pt-MZ
+    &PATTERN_8,  // pt-PT
+    &PATTERN_8,  // pt-ST
+    &PATTERN_8,  // pt-TL
     &PATTERN_0,  // qu
     &PATTERN_0,  // qu-BO
     &PATTERN_0,  // qu-EC
@@ -5431,10 +5533,10 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_6,  // ru-KG
     &PATTERN_6,  // ru-KZ
     &PATTERN_6,  // ru-MD
-    &PATTERN_6,  // ru-UA
+    &PATTERN_8,  // ru-UA
     &PATTERN_0,  // rw
     &PATTERN_2,  // rwk
-    &PATTERN_10, // sa
+    &PATTERN_11, // sa
     &PATTERN_6,  // sah
     &PATTERN_1,  // saq
     &PATTERN_0,  // sat
@@ -5443,17 +5545,17 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_2,  // sbp
     &PATTERN_6,  // sc
     &PATTERN_0,  // scn
-    &PATTERN_22, // sd
-    &PATTERN_22, // sd-Arab
+    &PATTERN_29, // sd
+    &PATTERN_29, // sd-Arab
     &PATTERN_0,  // sd-Deva
-    &PATTERN_22, // sdh
-    &PATTERN_22, // sdh-IQ
-    &PATTERN_15, // se
-    &PATTERN_15, // se-FI
-    &PATTERN_15, // se-SE
+    &PATTERN_29, // sdh
+    &PATTERN_29, // sdh-IQ
+    &PATTERN_19, // se
+    &PATTERN_19, // se-FI
+    &PATTERN_19, // se-SE
     &PATTERN_2,  // seh
     &PATTERN_2,  // ses
-    &PATTERN_14, // sg
+    &PATTERN_16, // sg
     &PATTERN_0,  // sgs
     &PATTERN_2,  // shi
     &PATTERN_2,  // shi-Latn
@@ -5464,7 +5566,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // sid
     &PATTERN_6,  // sk
     &PATTERN_0,  // skr
-    &PATTERN_15, // sl
+    &PATTERN_18, // sl
     &PATTERN_0,  // sma
     &PATTERN_0,  // sma-NO
     &PATTERN_0,  // smj
@@ -5476,9 +5578,9 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // so-DJ
     &PATTERN_1,  // so-ET
     &PATTERN_1,  // so-KE
-    &PATTERN_6,  // sq
-    &PATTERN_6,  // sq-MK
-    &PATTERN_6,  // sq-XK
+    &PATTERN_8,  // sq
+    &PATTERN_8,  // sq-MK
+    &PATTERN_8,  // sq-XK
     &PATTERN_6,  // sr
     &PATTERN_6,  // sr-Cyrl
     &PATTERN_6,  // sr-Cyrl-BA
@@ -5498,9 +5600,9 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // suz
     &PATTERN_0,  // suz-Deva
     &PATTERN_0,  // suz-Sunu
-    &PATTERN_15, // sv
-    &PATTERN_15, // sv-AX
-    &PATTERN_15, // sv-FI
+    &PATTERN_19, // sv
+    &PATTERN_19, // sv-AX
+    &PATTERN_19, // sv-FI
     &PATTERN_0,  // sw
     &PATTERN_0,  // sw-CD
     &PATTERN_0,  // sw-KE
@@ -5508,11 +5610,11 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // syr
     &PATTERN_0,  // syr-SY
     &PATTERN_6,  // szl
-    &PATTERN_10, // ta
-    &PATTERN_10, // ta-LK
+    &PATTERN_11, // ta
+    &PATTERN_11, // ta-LK
     &PATTERN_0,  // ta-MY
     &PATTERN_0,  // ta-SG
-    &PATTERN_10, // te
+    &PATTERN_11, // te
     &PATTERN_1,  // teo
     &PATTERN_1,  // teo-KE
     &PATTERN_6,  // tg
@@ -5524,7 +5626,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // tn
     &PATTERN_1,  // tn-BW
     &PATTERN_0,  // to
-    &PATTERN_23, // tok
+    &PATTERN_30, // tok
     &PATTERN_6,  // tpi
     &PATTERN_1,  // tr
     &PATTERN_1,  // tr-CY
@@ -5538,8 +5640,8 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // ug
     &PATTERN_6,  // uk
     &PATTERN_0,  // und
-    &PATTERN_24, // ur
-    &PATTERN_20, // ur-IN
+    &PATTERN_31, // ur
+    &PATTERN_27, // ur-IN
     &PATTERN_6,  // uz
     &PATTERN_7,  // uz-Arab
     &PATTERN_6,  // uz-Cyrl
@@ -5548,7 +5650,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_1,  // vai-Latn
     &PATTERN_1,  // vai-Vaii
     &PATTERN_1,  // ve
-    &PATTERN_13, // vec
+    &PATTERN_15, // vec
     &PATTERN_6,  // vi
     &PATTERN_6,  // vmw
     &PATTERN_0,  // vo
@@ -5559,7 +5661,7 @@ pub(crate) static CURRENCY_PATTERNS: [&CurrencyPattern; 766] = [
     &PATTERN_0,  // wbp
     &PATTERN_0,  // wo
     &PATTERN_1,  // xh
-    &PATTERN_10, // xnr
+    &PATTERN_11, // xnr
     &PATTERN_6,  // xog
     &PATTERN_6,  // yav
     &PATTERN_0,  // yi

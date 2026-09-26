@@ -114,7 +114,7 @@ pub fn emit(cldr: &Cldr, cldr_version: &str) -> Result<RustFile> {
             &p.negative_prefix,
             &p.negative_suffix,
         );
-        let grouping = grouping_tokens(p.grouping);
+        let grouping = grouping_tokens(p.grouping, l.numbers.min_grouping_digits);
         let pattern = patterns.intern(quote! {
             CurrencyPattern {
                 positive_prefix: #pp,

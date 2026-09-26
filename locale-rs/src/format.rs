@@ -114,7 +114,8 @@ pub(crate) fn write_grouped<W: Write + ?Sized>(
 ) -> fmt::Result {
     let primary = usize::from(grouping.primary);
     let secondary = usize::from(grouping.secondary).max(1);
-    if primary == 0 || int.len() <= primary {
+    let min_digits = primary + usize::from(grouping.min_grouping_digits.max(1));
+    if primary == 0 || int.len() < min_digits {
         return write_digits(out, int, digits);
     }
 
@@ -239,10 +240,19 @@ pub(crate) type FloatStr = StackStr<512>;
 mod tests {
     use super::*;
 
-    fn grouped(int: &str, primary: u8, secondary: u8) -> String {
+    fn grouped_min(int: &str, primary: u8, secondary: u8, min_grouping_digits: u8) -> String {
+        let grouping = Grouping {
+            primary,
+            secondary,
+            min_grouping_digits,
+        };
         let mut s = String::new();
-        write_grouped(&mut s, int, Grouping { primary, secondary }, ",", None).unwrap();
+        write_grouped(&mut s, int, grouping, ",", None).unwrap();
         s
+    }
+
+    fn grouped(int: &str, primary: u8, secondary: u8) -> String {
+        grouped_min(int, primary, secondary, 1)
     }
 
     #[test]
@@ -254,6 +264,22 @@ mod tests {
         assert_eq!(grouped("10000000", 3, 2), "1,00,00,000");
         assert_eq!(grouped("123456", 3, 2), "1,23,456");
         assert_eq!(grouped("12345", 0, 0), "12345");
+    }
+
+    #[test]
+    fn minimum_grouping_digits() {
+        // 2: a 4-digit number stays ungrouped, 5 digits and more are grouped.
+        assert_eq!(grouped_min("1000", 3, 3, 2), "1000");
+        assert_eq!(grouped_min("9999", 3, 3, 2), "9999");
+        assert_eq!(grouped_min("10000", 3, 3, 2), "10,000");
+        assert_eq!(grouped_min("1234567", 3, 3, 2), "1,234,567");
+        // 3: grouping starts at 6 digits.
+        assert_eq!(grouped_min("12345", 3, 3, 3), "12345");
+        assert_eq!(grouped_min("123456", 3, 3, 3), "123,456");
+        // Only the threshold changes, not the group sizes.
+        assert_eq!(grouped_min("10000000", 3, 2, 2), "1,00,00,000");
+        // 0 is treated like 1.
+        assert_eq!(grouped_min("1000", 3, 3, 0), "1,000");
     }
 
     #[test]

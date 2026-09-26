@@ -28,6 +28,10 @@ pub struct Grouping {
     pub primary: u8,
     /// Size of every further group.
     pub secondary: u8,
+    /// Digits a number needs beyond the primary group before it is grouped
+    /// at all. With 1, English writes `1,000`; with 2, Spanish writes `1000`
+    /// but `12.345`.
+    pub min_grouping_digits: u8,
 }
 
 /// Number symbols of a locale in its default numbering system.

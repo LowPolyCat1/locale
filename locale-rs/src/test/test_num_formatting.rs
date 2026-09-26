@@ -79,3 +79,35 @@ fn test_formatter_display_and_reuse() {
     // Display honours width via to_string.
     assert_eq!(format!("{:>8}", de.format(1234).to_string()), "   1.234");
 }
+
+#[test]
+fn test_minimum_grouping_digits() {
+    // CLDR `minimumGroupingDigits` = 2: four-digit numbers stay ungrouped.
+    assert_eq!(1000.to_formatted_string(&Locale::es), "1000");
+    assert_eq!(9999.to_formatted_string(&Locale::es), "9999");
+    assert_eq!(10000.to_formatted_string(&Locale::es), "10.000");
+    assert_eq!(1234567.to_formatted_string(&Locale::es), "1.234.567");
+    assert_eq!((-1234).to_formatted_string(&Locale::es), "-1234");
+    assert_eq!(1234.5f64.to_formatted_string(&Locale::es), "1234,5");
+    assert_eq!(12345.5f64.to_formatted_string(&Locale::es), "12.345,5");
+    assert_eq!(1000.to_formatted_string(&Locale::pl), "1000");
+    assert_eq!(10000.to_formatted_string(&Locale::pl), "10\u{a0}000");
+
+    // `minimumGroupingDigits` = 3 (Ewe): grouping starts at six digits.
+    assert_eq!(12345.to_formatted_string(&Locale::ee), "12345");
+    assert_eq!(123456.to_formatted_string(&Locale::ee), "123,456");
+
+    // Locales with the default of 1 group four digits as before.
+    assert_eq!(1000.to_formatted_string(&Locale::en), "1,000");
+    assert_eq!(1000.to_formatted_string(&Locale::de), "1.000");
+    assert_eq!(1000.to_formatted_string(&Locale::es_MX), "1,000");
+
+    let es = NumberSymbols::for_locale(Locale::es);
+    assert_eq!(es.grouping.min_grouping_digits, 2);
+    assert_eq!(
+        NumberSymbols::for_locale(Locale::en)
+            .grouping
+            .min_grouping_digits,
+        1
+    );
+}
