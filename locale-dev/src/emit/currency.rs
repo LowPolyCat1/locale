@@ -12,6 +12,7 @@ use crate::error::{Error, Result};
 use crate::patterns::parse_currency_pattern;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use rayon::prelude::*;
 use std::collections::BTreeSet;
 
 fn currency(code: &str) -> TokenStream {
@@ -53,7 +54,7 @@ pub fn symbol_overrides(cldr: &Cldr) -> Vec<Vec<(String, String)>> {
             .unwrap_or_else(|| code.to_string())
     };
     cldr.locales
-        .iter()
+        .par_iter()
         .enumerate()
         .map(|(i, l)| {
             codes
@@ -74,7 +75,7 @@ pub fn symbol_overrides(cldr: &Cldr) -> Vec<Vec<(String, String)>> {
 /// Checks that resolving through the overrides yields every symbol CLDR
 /// lists for a locale.
 fn verify_symbols(cldr: &Cldr, overrides: &[Vec<(String, String)>]) -> Result<()> {
-    for (i, l) in cldr.locales.iter().enumerate() {
+    cldr.locales.par_iter().enumerate().try_for_each(|(i, l)| {
         for (code, symbol) in &l.currency_symbols {
             let resolved = resolve_symbol(cldr, overrides, i, code);
             if resolved != symbol {
@@ -84,8 +85,8 @@ fn verify_symbols(cldr: &Cldr, overrides: &[Vec<(String, String)>]) -> Result<()
                 )));
             }
         }
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 pub fn emit(cldr: &Cldr, cldr_version: &str) -> Result<RustFile> {

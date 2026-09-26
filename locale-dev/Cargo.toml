@@ -15,6 +15,7 @@ proc-macro2 = "1.0.106"
 syn = { version = "3.0.6", features = ["full"] }
 prettyplease = "0.3.0"
 phf_codegen = "0.14.0"
+rayon = "1.11.0"
 tracing = { version = "0.1.44" }
 tracing-subscriber = { version = "0.3.23" }
 toml_edit = { version = "0.25.11" }

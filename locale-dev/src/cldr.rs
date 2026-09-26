@@ -4,6 +4,7 @@
 //! all knowledge of the CLDR file layout lives in this module.
 
 use crate::error::{Error, Result};
+use rayon::prelude::*;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::{Cursor, Read};
@@ -89,11 +90,15 @@ const DEFAULT_CURRENCY_PATTERN: &str = "¤#,##0.00";
 
 /// A zip archive with the layout of the `cldr-json` release assets
 /// (`cldr-core/`, `cldr-numbers-full/`, `cldr-dates-full/`, ...).
-struct Archive {
-    zip: ZipArchive<Cursor<Vec<u8>>>,
+///
+/// Cloning is cheap: clones share the buffer and the parsed central
+/// directory, so each worker thread reads through its own handle.
+#[derive(Clone)]
+struct Archive<'a> {
+    zip: ZipArchive<Cursor<&'a [u8]>>,
 }
 
-impl Archive {
+impl Archive<'_> {
     fn json(&mut self, path: &str) -> Result<Option<Value>> {
         let mut file = match self.zip.by_name(path) {
             Ok(file) => file,
@@ -133,10 +138,10 @@ impl Archive {
 }
 
 impl Cldr {
-    /// Parses a CLDR JSON archive.
+    /// Parses a CLDR JSON archive. Locales are read in parallel.
     pub fn from_zip(buffer: Vec<u8>) -> Result<Self> {
         let mut archive = Archive {
-            zip: ZipArchive::new(Cursor::new(buffer))?,
+            zip: ZipArchive::new(Cursor::new(buffer.as_slice()))?,
         };
         let names = archive.locale_names();
         if names.is_empty() {
@@ -154,8 +159,7 @@ impl Cldr {
             .map(|(i, n)| (n.as_str(), i))
             .collect();
 
-        let mut locales = Vec::with_capacity(names.len());
-        for name in &names {
+        let read_locale = |archive: &mut Archive, name: &String| -> Result<LocaleData> {
             let numbers_json =
                 archive.json(&format!("cldr-numbers-full/main/{name}/numbers.json"))?;
             let numbers_json = numbers_json.as_ref().map(|j| &j["main"][name]["numbers"]);
@@ -185,7 +189,7 @@ impl Cldr {
                 .map(|j| date_data(&j["main"][name]["dates"]["calendars"]["gregorian"]))
                 .unwrap_or_default();
 
-            locales.push(LocaleData {
+            Ok(LocaleData {
                 name: name.clone(),
                 parent: resolve_parent(name, &parent_overrides, &likely, &index),
                 numbers,
@@ -193,8 +197,13 @@ impl Cldr {
                 currency_pattern,
                 default_currency: default_currency(name, &likely, &region_currency),
                 currency_symbols,
-            });
-        }
+            })
+        };
+        // Every task gets its own archive handle; `collect` keeps the order.
+        let locales = names
+            .par_iter()
+            .map_init(|| archive.clone(), read_locale)
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
             locales,

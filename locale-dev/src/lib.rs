@@ -12,6 +12,7 @@ mod test;
 
 use cldr::Cldr;
 use error::Result;
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 
 const RUST_KEYWORDS: &[&str] = &[
@@ -33,16 +34,19 @@ pub fn sanitize_variant(name: &str) -> String {
 
 /// Generates every data module of `locale-rs` into `data_dir`
 /// (`locale-rs/src/data`) and formats them. Returns the written files.
+///
+/// The emitters run in parallel, as does rustfmt.
 pub fn generate(cldr: &Cldr, cldr_version: &str, data_dir: &Path) -> Result<Vec<PathBuf>> {
-    let files = [
-        ("locales.rs", emit::locales::emit(cldr, cldr_version)?),
-        ("numbers.rs", emit::numbers::emit(cldr, cldr_version)?),
-        ("dates.rs", emit::dates::emit(cldr, cldr_version)?),
-        ("currency.rs", emit::currency::emit(cldr, cldr_version)?),
+    type Emitter = fn(&Cldr, &str) -> Result<emit::RustFile>;
+    let emitters: [(&str, Emitter); 4] = [
+        ("locales.rs", emit::locales::emit),
+        ("numbers.rs", emit::numbers::emit),
+        ("dates.rs", emit::dates::emit),
+        ("currency.rs", emit::currency::emit),
     ];
-    let written = files
-        .iter()
-        .map(|(name, file)| file.write(&data_dir.join(name)))
+    let written = emitters
+        .par_iter()
+        .map(|(name, emit)| emit(cldr, cldr_version)?.write(&data_dir.join(name)))
         .collect::<Result<Vec<_>>>()?;
     format::format_generated_code(&written)?;
     tracing::info!(
