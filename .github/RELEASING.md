@@ -28,7 +28,11 @@
      `Cargo.lock` conflicts between Dependabot PRs.
    - CLDR bump PRs are regenerated from `master` by re-running `cldr-bump`.
    - Other PRs with auto-merge enabled are updated via "Update branch".
-4. **`changelog.yml`** runs after a successful publish. It generates release notes
+4. **`cldr-bump.yml`** runs every Monday (or manually). If upstream CLDR has a new
+   release, it regenerates the data, bumps the version and opens a PR with
+   auto-merge enabled; the semver check corrects the version if needed. Disable
+   auto-merge on the PR to review it by hand.
+5. **`changelog.yml`** runs after a successful publish. It generates release notes
    from the merged PRs (categories in `.github/release.yml`: breaking, CLDR,
    dependencies, other), creates the GitHub release and opens an auto-merging PR
    that adds the entry to `CHANGELOG.md`. PRs that need a major/breaking release
