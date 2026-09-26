@@ -168,8 +168,9 @@ impl<const N: usize> StackStr<N> {
     }
 
     pub(crate) fn as_str(&self) -> &str {
-        // Only whole `&str`s and ASCII digits are ever written.
-        std::str::from_utf8(&self.buf[..self.len]).unwrap_or_default()
+        // SAFETY: only whole `&str`s, encoded `char`s and ASCII digits are
+        // ever written, and `truncate` is only called at char boundaries.
+        unsafe { std::str::from_utf8_unchecked(&self.buf[..self.len]) }
     }
 
     /// Shortens the string to `len` bytes, which must be a char boundary.
@@ -206,6 +207,18 @@ impl<const N: usize> StackStr<N> {
 }
 
 impl<const N: usize> Write for StackStr<N> {
+    #[inline]
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        let end = self.len + c.len_utf8();
+        if end > N {
+            return Err(fmt::Error);
+        }
+        c.encode_utf8(&mut self.buf[self.len..end]);
+        self.len = end;
+        Ok(())
+    }
+
+    #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let end = self.len + s.len();
         if end > N {

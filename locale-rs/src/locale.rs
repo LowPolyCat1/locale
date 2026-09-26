@@ -92,12 +92,13 @@ impl Locale {
     /// assert!(suggestions.iter().any(|l| l.as_str() == "en-GB"));
     /// ```
     pub fn suggest(input: &str) -> Vec<Self> {
-        let normalized = normalize(input);
+        let input: Vec<char> = normalize(input).chars().collect();
+        let counts = CharCounts::new(&input);
         let mut suggestions: Vec<(usize, Locale)> = LOCALE_MAP
             .entries()
             .filter_map(|(key, &locale)| {
-                let distance = levenshtein_distance(&normalized, key);
-                (distance <= 3).then_some((distance, locale))
+                bounded_levenshtein(&input, &counts, key, MAX_SUGGESTION_DISTANCE)
+                    .map(|d| (d, locale))
             })
             .collect();
 
@@ -156,22 +157,95 @@ fn normalize(s: &str) -> String {
         .collect()
 }
 
-/// Levenshtein distance over characters. Used for locale suggestions.
-fn levenshtein_distance(s1: &str, s2: &str) -> usize {
-    let s2: Vec<char> = s2.chars().collect();
-    let mut prev: Vec<usize> = (0..=s2.len()).collect();
-    let mut curr = vec![0; s2.len() + 1];
+/// Largest edit distance `suggest` reports.
+const MAX_SUGGESTION_DISTANCE: usize = 3;
 
-    for (i, c1) in s1.chars().enumerate() {
-        curr[0] = i + 1;
-        for (j, &c2) in s2.iter().enumerate() {
-            let cost = usize::from(c1 != c2);
-            curr[j + 1] = (curr[j] + 1).min(prev[j + 1] + 1).min(prev[j] + cost);
+/// Upper bound on the length of a locale identifier, checked by a test.
+const MAX_ID_LEN: usize = 32;
+
+/// Counts of the characters of a `suggest` input: one slot per ASCII byte,
+/// plus the number of non-ASCII characters, which match no identifier.
+struct CharCounts {
+    ascii: [u8; 128],
+    non_ascii: usize,
+}
+
+impl CharCounts {
+    fn new(chars: &[char]) -> Self {
+        let mut counts = Self {
+            ascii: [0; 128],
+            non_ascii: 0,
+        };
+        for &c in chars {
+            match u8::try_from(c) {
+                Ok(b) if b < 128 => {
+                    counts.ascii[usize::from(b)] = counts.ascii[usize::from(b)].saturating_add(1)
+                }
+                _ => counts.non_ascii += 1,
+            }
+        }
+        counts
+    }
+
+    /// A lower bound on the edit distance to the ASCII string `b`: every
+    /// character of one string without a partner in the other needs an edit.
+    fn lower_bound(&self, len: usize, b: &[u8]) -> usize {
+        let mut left = self.ascii;
+        let mut unmatched_b = 0;
+        for &byte in b {
+            match left.get_mut(usize::from(byte)) {
+                Some(n) if *n > 0 => *n -= 1,
+                _ => unmatched_b += 1,
+            }
+        }
+        let unmatched_a = len - (b.len() - unmatched_b);
+        unmatched_a.max(unmatched_b)
+    }
+}
+
+/// Levenshtein distance between `a` and the ASCII identifier `b`, or `None`
+/// if it exceeds `max`.
+///
+/// Cheap lower bounds (length difference, unmatched characters) rule out
+/// most identifiers before the dynamic program runs. The program itself uses
+/// small stack rows and stops as soon as every entry of a row exceeds `max`
+/// (row minima never decrease).
+fn bounded_levenshtein(a: &[char], counts: &CharCounts, b: &str, max: usize) -> Option<usize> {
+    let b = b.as_bytes();
+    if a.len().abs_diff(b.len()) > max || b.len() > MAX_ID_LEN {
+        return None;
+    }
+    if counts.lower_bound(a.len(), b) > max {
+        return None;
+    }
+
+    // Distances above `max` are clamped, so `u8` cells cannot overflow.
+    let cap = u8::try_from(max + 1).unwrap_or(u8::MAX);
+    let mut prev = [0u8; MAX_ID_LEN + 1];
+    let mut curr = [0u8; MAX_ID_LEN + 1];
+    for (j, p) in prev.iter_mut().enumerate().take(b.len() + 1) {
+        *p = u8::try_from(j).unwrap_or(u8::MAX).min(cap);
+    }
+
+    for (i, &ca) in a.iter().enumerate() {
+        curr[0] = u8::try_from(i + 1).unwrap_or(u8::MAX).min(cap);
+        let mut row_min = curr[0];
+        for (j, &cb) in b.iter().enumerate() {
+            let cost = u8::from(ca != char::from(cb));
+            curr[j + 1] = (curr[j] + 1)
+                .min(prev[j + 1] + 1)
+                .min(prev[j] + cost)
+                .min(cap);
+            row_min = row_min.min(curr[j + 1]);
+        }
+        if row_min >= cap {
+            return None;
         }
         std::mem::swap(&mut prev, &mut curr);
     }
 
-    prev[s2.len()]
+    let distance = usize::from(prev[b.len()]);
+    (distance <= max).then_some(distance)
 }
 
 impl fmt::Display for Locale {
@@ -222,11 +296,72 @@ impl From<&Locale> for &'static str {
 mod tests {
     use super::*;
 
+    /// Plain Levenshtein distance over characters, the reference for
+    /// `bounded_levenshtein`.
+    fn levenshtein(a: &str, b: &str) -> usize {
+        let b: Vec<char> = b.chars().collect();
+        let mut prev: Vec<usize> = (0..=b.len()).collect();
+        for (i, ca) in a.chars().enumerate() {
+            let mut curr = vec![i + 1; b.len() + 1];
+            for (j, &cb) in b.iter().enumerate() {
+                curr[j + 1] = (curr[j] + 1)
+                    .min(prev[j + 1] + 1)
+                    .min(prev[j] + usize::from(ca != cb));
+            }
+            prev = curr;
+        }
+        prev[b.len()]
+    }
+
+    fn bounded(a: &str, b: &str) -> Option<usize> {
+        let a: Vec<char> = a.chars().collect();
+        bounded_levenshtein(&a, &CharCounts::new(&a), b, MAX_SUGGESTION_DISTANCE)
+    }
+
     #[test]
-    fn levenshtein_counts_characters_not_bytes() {
-        assert_eq!(levenshtein_distance("ä", "a"), 1);
-        assert_eq!(levenshtein_distance("", "abc"), 3);
-        assert_eq!(levenshtein_distance("kitten", "sitting"), 3);
+    fn bounded_levenshtein_basics() {
+        assert_eq!(bounded("ä", "a"), Some(1));
+        assert_eq!(bounded("", "abc"), Some(3));
+        assert_eq!(bounded("", "abcd"), None);
+        assert_eq!(bounded("kitten", "sitting"), Some(3));
+        assert_eq!(bounded("en-gb", "en-gb"), Some(0));
+        assert_eq!(bounded("zzzzzz", "en-gb"), None);
+    }
+
+    #[test]
+    fn bounded_levenshtein_matches_reference() {
+        let keys: Vec<String> = AVAILABLE_LOCALES.iter().map(|id| normalize(id)).collect();
+        let mut inputs = vec![
+            String::new(),
+            "x".into(),
+            "en-gbb".into(),
+            "pt_br".into(),
+            "zh-hant-hkk".into(),
+            "ääää".into(),
+            "sr-latn-ba-extra".into(),
+        ];
+        // Deletions, insertions and substitutions of real identifiers.
+        for key in keys.iter().step_by(7) {
+            for i in 0..key.len() {
+                inputs.push(format!("{}{}", &key[..i], &key[i + 1..]));
+                inputs.push(format!("{}q{}", &key[..i], &key[i..]));
+                inputs.push(format!("{}ü{}", &key[..i], &key[i + 1..]));
+            }
+        }
+        for input in &inputs {
+            for key in keys.iter().step_by(3) {
+                let d = levenshtein(input, key);
+                let expected = (d <= MAX_SUGGESTION_DISTANCE).then_some(d);
+                assert_eq!(bounded(input, key), expected, "{input:?} vs {key:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn identifiers_fit_the_suggestion_rows() {
+        for id in AVAILABLE_LOCALES {
+            assert!(id.is_ascii() && id.len() <= MAX_ID_LEN, "{id}");
+        }
     }
 
     #[test]
