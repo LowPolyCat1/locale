@@ -2,6 +2,23 @@
 
 All notable changes to locale-rs are documented here.
 
+## [0.3.5](https://github.com/LowPolyCat1/locale-rs/releases/tag/v0.3.5) - 2026-09-26
+
+<!-- Release notes generated using configuration in .github/release.yml at v0.3.5 -->
+
+### What's Changed
+#### Dependencies
+* chore: bump the cargo group across 1 directory with 9 updates by @dependabot[bot] in https://github.com/LowPolyCat1/locale-rs/pull/36
+* chore: bump the cargo-major group across 1 directory with 3 updates by @dependabot[bot] in https://github.com/LowPolyCat1/locale-rs/pull/37
+#### Other changes
+* ci: title CLDR bump PRs "CLDR: ..." instead of "chore: ..." by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/45
+* chore: remove RELEASING.md and DOCUMENTATION.md by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/47
+* docs: add CONTRIBUTING.md by @LowPolyCat1 in https://github.com/LowPolyCat1/locale-rs/pull/56
+
+
+**Full Changelog**: https://github.com/LowPolyCat1/locale-rs/compare/v0.3.3...v0.3.5
+
+
 ## [0.3.3](https://github.com/LowPolyCat1/locale-rs/releases/tag/v0.3.3) - 2026-09-26
 
 <!-- Release notes generated using configuration in .github/release.yml at v0.3.3 -->
