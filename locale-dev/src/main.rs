@@ -1,10 +1,29 @@
 use locale_dev::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt().init();
 
     let workspace_root = find_workspace_root()?;
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
+        [] => {}
+        ["readme"] => return sync_readmes(&workspace_root),
+        ["readme", "--check"] => return check_readmes(&workspace_root),
+        _ => {
+            return Err(format!(
+                "Unknown arguments {args:?}. Usage: locale-dev [readme [--check]]"
+            )
+            .into());
+        }
+    }
+
     let locale_rs_src = workspace_root.join("locale-rs/src");
 
     let current_cldr = version::read_workspace_cldr_version(&workspace_root)?;
@@ -68,7 +87,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     version::write_workspace_cldr_version(&workspace_root, &new_cldr)?;
     tracing::info!("workspace.metadata.cldr.version -> {new_cldr}");
 
+    sync_readmes(&workspace_root)
+}
+
+fn sync_readmes(workspace_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let updated = readme::sync(workspace_root, false)?;
+    if updated.is_empty() {
+        tracing::info!("READMEs are up to date.");
+    }
+    for file in updated {
+        tracing::info!("Updated {}", file.display());
+    }
     Ok(())
+}
+
+fn check_readmes(workspace_root: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let stale = readme::sync(workspace_root, true)?;
+    if stale.is_empty() {
+        tracing::info!("READMEs are up to date.");
+        return Ok(());
+    }
+    for file in &stale {
+        tracing::error!("{} is out of date", file.display());
+    }
+    Err(
+        "Generated README sections are out of date. Run `cargo run -p locale-dev -- readme`."
+            .into(),
+    )
 }
 
 fn find_workspace_root() -> Result<PathBuf, Box<dyn std::error::Error>> {

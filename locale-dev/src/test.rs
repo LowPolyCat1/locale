@@ -5,7 +5,7 @@ use crate::version::{
 };
 use crate::{
     generate_currency_formatting, generate_datetime_formatting, generate_locales,
-    generate_num_formats,
+    generate_num_formats, readme,
 };
 
 use std::fs;
@@ -557,4 +557,146 @@ fn generate_num_formats_with_real_numbering_systems_emits_digit_table() {
     assert!(contents.contains("Locale::ar => &[3, 2]"));
     // Digit table is emitted as a `Some([...])` array. We just check the marker.
     assert!(contents.contains("Locale::ar => Some(["));
+}
+
+// ---------------------------------------------------------------------------
+// readme
+// ---------------------------------------------------------------------------
+
+fn readme_facts() -> readme::Facts {
+    readme::Facts {
+        cldr_version: "48.2.2".into(),
+        locale_count: 766,
+        crate_version: "0.3.1".into(),
+        feature_table: "| a |\n| --- |".into(),
+    }
+}
+
+#[test]
+fn readme_version_req_matches_cargo_compatibility() {
+    assert_eq!(readme::version_req("0.3.1"), "0.3");
+    assert_eq!(readme::version_req("1.2.0"), "1");
+}
+
+#[test]
+fn readme_renders_inline_regions() {
+    let text = "CLDR <!-- gen:{{cldr_version}} -->48.1.0<!-- /gen --> with <!-- gen: {{ locale_count }} --><!-- /gen --> locales";
+    assert_eq!(
+        readme::render(text, &readme_facts()).unwrap(),
+        "CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen --> with <!-- gen: {{ locale_count }} -->766<!-- /gen --> locales",
+    );
+}
+
+#[test]
+fn readme_renders_block_regions_verbatim() {
+    let text = "<!-- gen:\nlocale-rs = \"{{crate_version_req}}\"\n{{feature_table}}\n-->\nstale\n<!-- /gen -->\n";
+    assert_eq!(
+        readme::render(text, &readme_facts()).unwrap(),
+        "<!-- gen:\nlocale-rs = \"{{crate_version_req}}\"\n{{feature_table}}\n-->\nlocale-rs = \"0.3\"\n| a |\n| --- |\n<!-- /gen -->\n",
+    );
+}
+
+#[test]
+fn readme_render_is_idempotent() {
+    let text = "a <!-- gen:{{cldr_version}} -->x<!-- /gen --> b";
+    let once = readme::render(text, &readme_facts()).unwrap();
+    assert_eq!(readme::render(&once, &readme_facts()).unwrap(), once);
+}
+
+#[test]
+fn readme_render_rejects_malformed_markers() {
+    let facts = readme_facts();
+    let err = readme::render("x\n<!-- gen:{{nope}} --><!-- /gen -->", &facts).unwrap_err();
+    assert!(err.contains("line 2") && err.contains("nope"), "{err}");
+    assert!(readme::render("<!-- gen:{{cldr_version}} -->", &facts).is_err());
+    assert!(readme::render("<!-- gen:{{cldr_version} --><!-- /gen -->", &facts).is_err());
+    assert!(readme::render("<!-- /gen -->", &facts).is_err());
+    assert!(
+        readme::render(
+            "<!-- gen:a -->x <!-- gen:b -->y<!-- /gen --><!-- /gen -->",
+            &facts
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn readme_counts_available_locales() {
+    let src = "pub const AVAILABLE_LOCALES: [&str; 3] = [\"a\", \"b\", \"c\"];";
+    assert_eq!(readme::count_locales(src).unwrap(), 3);
+    assert!(readme::count_locales("pub enum Locale {}").is_err());
+}
+
+#[test]
+fn readme_feature_table_lists_features_in_manifest_order() {
+    let manifest: toml_edit::DocumentMut = r#"
+[features]
+nums = []
+strum = ["dep:strum", "dep:strum_macros"]
+currency = ["nums"]
+datetime = []
+rebuild = []
+all = ["datetime", "nums"]
+"#
+    .parse()
+    .unwrap();
+    let table = readme::feature_table(&manifest).unwrap();
+    let lines: Vec<&str> = table.lines().collect();
+    assert_eq!(lines[0], "| Feature | Enables | Description |");
+    assert!(lines[2].starts_with("| `nums` | - |"));
+    assert!(lines[3].starts_with("| `strum` | `strum` crate, `strum_macros` crate |"));
+    assert!(lines[4].starts_with("| `currency` | `nums` |"));
+    assert!(lines[7].starts_with("| `all` | `datetime`, `nums` |"));
+}
+
+#[test]
+fn readme_feature_table_requires_descriptions() {
+    let undocumented: toml_edit::DocumentMut =
+        "[features]\nnums = []\nshiny = []\n".parse().unwrap();
+    let err = readme::feature_table(&undocumented)
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("shiny"), "{err}");
+
+    // A description for a feature that no longer exists is stale.
+    let missing: toml_edit::DocumentMut = "[features]\nnums = []\n".parse().unwrap();
+    assert!(readme::feature_table(&missing).is_err());
+}
+
+#[test]
+fn readme_sync_checks_and_writes_workspace() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path();
+    fs::write(
+        root.join("Cargo.toml"),
+        "[workspace]\n[workspace.metadata.cldr]\nversion = \"48.2.2\"\n",
+    )
+    .unwrap();
+    fs::create_dir_all(root.join("locale-rs/src")).unwrap();
+    fs::create_dir_all(root.join("locale-dev")).unwrap();
+    fs::write(
+        root.join("locale-rs/Cargo.toml"),
+        "[package]\nversion = \"0.3.1\"\n[features]\nrebuild = []\nstrum = []\ndatetime = []\nnums = []\ncurrency = []\nall = []\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("locale-rs/src/locale.rs"),
+        "pub const AVAILABLE_LOCALES: [&str; 2] = [\"en\", \"de\"];",
+    )
+    .unwrap();
+    let stale = "CLDR <!-- gen:{{cldr_version}} -->48.1.0<!-- /gen -->\n";
+    for file in readme::README_FILES {
+        fs::write(root.join(file), stale).unwrap();
+    }
+
+    let reported = readme::sync(root, true).unwrap();
+    assert_eq!(reported.len(), readme::README_FILES.len());
+    assert_eq!(fs::read_to_string(root.join("README.md")).unwrap(), stale);
+
+    readme::sync(root, false).unwrap();
+    assert_eq!(
+        fs::read_to_string(root.join("README.md")).unwrap(),
+        "CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->\n",
+    );
+    assert!(readme::sync(root, true).unwrap().is_empty());
 }

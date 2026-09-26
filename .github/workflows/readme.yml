@@ -1,0 +1,30 @@
+name: readme
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      # Regenerates the `<!-- gen: -->` regions, then fails with a diff if any changed.
+      - name: Regenerate README sections
+        run: cargo run -p locale-dev -- readme
+
+      - name: Check for drift
+        shell: bash
+        run: |
+          if ! git diff --exit-code -- '*.md'; then
+            echo "::error::Generated README sections are out of date. Run \`cargo run -p locale-dev -- readme\` and commit the result."
+            exit 1
+          fi

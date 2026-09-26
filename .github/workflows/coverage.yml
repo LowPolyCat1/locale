@@ -1,0 +1,27 @@
+name: coverage
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      # Line coverage is low because the generated CLDR tables count as source.
+      # Raise the gate as tests are added.
+      - name: Coverage gate
+        run: cargo llvm-cov -p locale-rs --all-features --summary-only --fail-under-lines 29

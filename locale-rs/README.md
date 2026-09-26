@@ -6,7 +6,7 @@ This crate provides a type-safe interface for locale identifiers, ensuring that 
 
 ## Features
 
-- **766 Unicode Locales**: Complete coverage of CLDR 48.1.0
+- **<!-- gen:{{locale_count}} -->766<!-- /gen --> Unicode Locales**: Complete coverage of CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->
 - **Type-Safe Locales**: Compile-time validated locale identifiers as Rust enums
 - **Zero-Cost Abstractions**: No runtime overhead for locale operations
 - **Number Formatting**: Locale-aware formatting with native digit support
@@ -23,16 +23,29 @@ This crate provides a type-safe interface for locale identifiers, ensuring that 
 
 Add to your `Cargo.toml`:
 
+<!-- gen:
 ```toml
 [dependencies]
-locale-rs = "0.2"
+locale-rs = "{{crate_version_req}}"
 
 # With number formatting support
-locale-rs = { version = "0.2", features = ["nums"] }
+locale-rs = { version = "{{crate_version_req}}", features = ["nums"] }
 
 # With all features
-locale-rs = { version = "0.2", features = ["all"] }
+locale-rs = { version = "{{crate_version_req}}", features = ["all"] }
 ```
+-->
+```toml
+[dependencies]
+locale-rs = "0.3"
+
+# With number formatting support
+locale-rs = { version = "0.3", features = ["nums"] }
+
+# With all features
+locale-rs = { version = "0.3", features = ["all"] }
+```
+<!-- /gen -->
 
 ### Basic Usage
 
@@ -102,6 +115,21 @@ for locale in suggestions {
 ```
 
 ## Features
+
+None of these are enabled by default.
+
+<!-- gen:
+{{feature_table}}
+-->
+| Feature | Enables | Description |
+| --- | --- | --- |
+| `rebuild` | - | Reserved for code regeneration; has no effect on the API. |
+| `strum` | `strum` crate, `strum_macros` crate | Derives `strum` traits on `Locale`, e.g. iterating over all locales. |
+| `datetime` | - | Localized month and weekday names and patterns (`datetime_formats`). |
+| `nums` | - | Locale-aware number formatting with native digits (`num_formats`). |
+| `currency` | `nums` | ICU-compatible currency formatting patterns (`currency_formats`). |
+| `all` | `datetime`, `nums`, `strum`, `currency` | Every feature above. |
+<!-- /gen -->
 
 ### `nums` - Number Formatting
 
@@ -350,7 +378,7 @@ for (i, day) in locale.weekdays_abbreviated().iter().enumerate() {
 
 ## Supported Locales
 
-The library supports **766 locales** from CLDR 48.1.0, including:
+The library supports **<!-- gen:{{locale_count}} -->766<!-- /gen --> locales** from CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->, including:
 
 - **Languages**: 200+ languages
 - **Regions**: 150+ territories
