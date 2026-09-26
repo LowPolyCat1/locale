@@ -23,9 +23,9 @@ all = ["datetime", "nums", "strum", "currency"]
 
 [dependencies]
 thiserror = { version = "2.0.17" }
-strum = { version = "0.27.2", optional = true }
-strum_macros = { version = "0.27.2", optional = true }
-phf = { version = "0.13.1", features = ["macros"] }
+strum = { version = "0.28.0", optional = true }
+strum_macros = { version = "0.28.0", optional = true }
+phf = { version = "0.14.0", features = ["macros"] }
 
 
 [dev-dependencies]
