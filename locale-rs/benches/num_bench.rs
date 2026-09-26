@@ -80,7 +80,7 @@ fn bench_float_formatting(c: &mut Criterion) {
 
     // Small decimals
     group.bench_function("f64_small", |b| {
-        b.iter(|| black_box(3.14f64).to_formatted_string(&Locale::en))
+        b.iter(|| black_box(1.25f64).to_formatted_string(&Locale::en))
     });
 
     // Medium decimals
@@ -213,7 +213,7 @@ fn bench_large_numbers(c: &mut Criterion) {
 
     // Very long decimal numbers
     group.bench_function("f64_many_decimals", |b| {
-        b.iter(|| black_box(123456789.123456789f64).to_formatted_string(&Locale::en))
+        b.iter(|| black_box(123_456_789.123_456_79_f64).to_formatted_string(&Locale::en))
     });
 
     group.finish();
