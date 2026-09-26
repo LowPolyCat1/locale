@@ -7,7 +7,31 @@ on:
         branches: [master]
 
 jobs:
+    # Only pull requests are filtered; pushes to master always run everything.
+    # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+    # checks are still reported as successful. If the filter itself fails, `run` is
+    # empty and everything runs.
+    changes:
+        runs-on: ubuntu-latest
+        permissions:
+            pull-requests: read
+        outputs:
+            run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+        steps:
+            - uses: dorny/paths-filter@v3
+              id: filter
+              if: github.event_name == 'pull_request'
+              with:
+                  filters: |
+                      run:
+                          - '**/*.rs'
+                          - '**/rustfmt.toml'
+                          - '**/.rustfmt.toml'
+                          - '.github/workflows/fmt.yml'
+
     fmt:
+        needs: changes
+        if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
         runs-on: ubuntu-latest
         permissions:
             contents: read

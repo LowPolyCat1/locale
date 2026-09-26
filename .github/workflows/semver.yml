@@ -13,7 +13,32 @@ permissions:
   contents: read
 
 jobs:
+  # Only pull requests are filtered; pushes to master always run everything.
+  # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+  # checks are still reported as successful. If the filter itself fails, `run` is
+  # empty and everything runs.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            run:
+              - 'locale-rs/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/scripts/semver-check.sh'
+              - '.github/workflows/semver.yml'
+
   semver:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

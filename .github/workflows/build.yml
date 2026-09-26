@@ -10,7 +10,34 @@ env:
     CARGO_TERM_COLOR: always
 
 jobs:
+    # Pull requests are compared against their base, pushes against the previous commit.
+    # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+    # checks are still reported as successful. If the filter itself fails, `run` is
+    # empty and everything runs.
+    changes:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: read
+        outputs:
+            run: ${{ steps.filter.outputs.run }}
+        steps:
+            # Pull requests are diffed through the API; pushes need the git history.
+            - uses: actions/checkout@v7
+              if: github.event_name == 'push'
+            - uses: dorny/paths-filter@v3
+              id: filter
+              with:
+                  filters: |
+                      run:
+                          - '**/*.rs'
+                          - '**/Cargo.toml'
+                          - 'Cargo.lock'
+                          - '.github/workflows/build.yml'
+
     build:
+        needs: changes
+        if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
@@ -30,3 +57,22 @@ jobs:
               run: cargo test --verbose
             - name: Build release
               run: cargo build --verbose --release
+
+    # The check to require in the ruleset. A skipped matrix job reports a single
+    # unexpanded check instead of one per entry, so the per-entry `build (<os>, stable)`
+    # checks can't be required once the matrix may be skipped. This job passes when
+    # the build succeeded, or was skipped because nothing relevant changed (not
+    # because the run was cancelled).
+    build-ok:
+        needs: [changes, build]
+        if: always()
+        runs-on: ubuntu-latest
+        permissions: {}
+        steps:
+            - name: Check build result
+              env:
+                  RESULT: ${{ needs.build.result }}
+                  RUN: ${{ needs.changes.outputs.run }}
+              run: |
+                  echo "build: $RESULT, relevant changes: ${RUN:-unknown}"
+                  [ "$RESULT" = success ] || { [ "$RESULT" = skipped ] && [ "$RUN" = false ]; }

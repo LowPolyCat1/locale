@@ -7,7 +7,34 @@ on:
     branches: [master]
 
 jobs:
+  # Pull requests are compared against their base, pushes against the previous commit.
+  # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+  # checks are still reported as successful. If the filter itself fails, `run` is
+  # empty and everything runs.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.filter.outputs.run }}
+    steps:
+      # Pull requests are diffed through the API; pushes need the git history.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            run:
+              - '**/*.rs'
+              - '**/Cargo.toml'
+              - 'Cargo.lock'
+              - '.github/workflows/test.yml'
+
   test:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
     runs-on: windows-latest
     permissions:
       contents: read
