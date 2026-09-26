@@ -78,10 +78,10 @@ fn test_debug_print() {
 #[test]
 fn test_fallback_logic() {
     // Test 1: Regional to Base
-    if let Ok(regional) = Locale::from_str("en-GB")
+    if let Ok(regional) = Locale::from_str("de-AT")
         && let Some(fallback) = regional.fallback()
     {
-        assert_eq!(fallback.as_str(), "en");
+        assert_eq!(fallback.as_str(), "de");
     }
 
     // Test 2: Base locale should have no fallback
@@ -114,12 +114,40 @@ fn test_all_fallbacks_are_valid() {
     for name in AVAILABLE_LOCALES {
         let loc = Locale::from_str(name).unwrap();
         if let Some(fallback) = loc.fallback() {
-            // Ensure the fallback string is a prefix of the original
-            assert!(name.starts_with(fallback.as_str()));
-            // Ensure it's not the same string
-            assert_ne!(name, fallback.as_str());
+            // A parent is a different locale and chains never loop. The
+            // language may change: CLDR makes `hi-Latn` inherit from `en-IN`.
+            assert_ne!(loc, fallback);
+            assert!(
+                loc.fallback_chain().count() <= 5,
+                "{name} has a cyclic chain"
+            );
         }
     }
+}
+
+#[test]
+fn test_cldr_parent_locales() {
+    // Explicit parents from CLDR's parentLocales.
+    assert_eq!(Locale::en_IN.fallback(), Some(Locale::en_001));
+    assert_eq!(Locale::en_AT.fallback(), Some(Locale::en_150));
+    assert_eq!(Locale::es_MX.fallback(), Some(Locale::es_419));
+    // A script that is not the language's likely one inherits from root.
+    assert_eq!(Locale::sr_Latn.fallback(), None);
+    assert_eq!(Locale::az_Cyrl.fallback(), None);
+    assert_eq!(Locale::hi_Latn.fallback(), Some(Locale::en_IN));
+    // Plain truncation otherwise.
+    assert_eq!(Locale::de_AT.fallback(), Some(Locale::de));
+    assert_eq!(Locale::sr_Cyrl.fallback(), Some(Locale::sr));
+    assert_eq!(Locale::zh_Hant_HK.fallback(), Some(Locale::zh_Hant));
+}
+
+#[test]
+fn test_fallback_chain() {
+    let chain: Vec<_> = Locale::en_AT.fallback_chain().collect();
+    assert_eq!(
+        chain,
+        [Locale::en_AT, Locale::en_150, Locale::en_001, Locale::en]
+    );
 }
 
 #[test]
@@ -205,4 +233,16 @@ fn test_region_code_with_script() {
 
     // Locales with script and region should return the region
     assert_eq!(Locale::zh_Hans_HK.region_code(), Some("HK"));
+}
+
+#[test]
+fn test_region_code_numeric_and_variants() {
+    assert_eq!(Locale::en_001.region_code(), Some("001"));
+    assert_eq!(Locale::es_419.region_code(), Some("419"));
+    assert_eq!(Locale::ca_ES_valencia.region_code(), Some("ES"));
+}
+
+#[test]
+fn test_cldr_version_is_dotted() {
+    assert_eq!(crate::CLDR_VERSION.split('.').count(), 3);
 }

@@ -1,3 +1,4 @@
+use crate::error::{Error, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml_edit::{DocumentMut, Item, Table, value};
@@ -66,13 +67,11 @@ fn locale_rs_cargo_toml(workspace_root: &Path) -> PathBuf {
     workspace_root.join("locale-rs").join("Cargo.toml")
 }
 
-fn load_doc(path: &Path) -> Result<DocumentMut, Box<dyn std::error::Error>> {
+fn load_doc(path: &Path) -> Result<DocumentMut> {
     Ok(fs::read_to_string(path)?.parse()?)
 }
 
-pub fn read_workspace_cldr_version(
-    workspace_root: &Path,
-) -> Result<Option<String>, Box<dyn std::error::Error>> {
+pub fn read_workspace_cldr_version(workspace_root: &Path) -> Result<Option<String>> {
     let doc = load_doc(&workspace_cargo_toml(workspace_root))?;
     Ok(doc
         .get("workspace")
@@ -83,10 +82,7 @@ pub fn read_workspace_cldr_version(
         .map(str::to_owned))
 }
 
-pub fn write_workspace_cldr_version(
-    workspace_root: &Path,
-    new_version: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_workspace_cldr_version(workspace_root: &Path, new_version: &str) -> Result<()> {
     let path = workspace_cargo_toml(workspace_root);
     let mut doc = load_doc(&path)?;
 
@@ -94,36 +90,33 @@ pub fn write_workspace_cldr_version(
         .entry("workspace")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace` is not a table".into()))?;
     let metadata = workspace
         .entry("metadata")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace.metadata` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace.metadata` is not a table".into()))?;
     let cldr = metadata
         .entry("cldr")
         .or_insert(Item::Table(Table::new()))
         .as_table_mut()
-        .ok_or("`workspace.metadata.cldr` is not a table")?;
+        .ok_or_else(|| Error::Version("`workspace.metadata.cldr` is not a table".into()))?;
     cldr["version"] = value(new_version);
 
     fs::write(&path, doc.to_string())?;
     Ok(())
 }
 
-pub fn read_locale_rs_version(workspace_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
+pub fn read_locale_rs_version(workspace_root: &Path) -> Result<String> {
     let doc = load_doc(&locale_rs_cargo_toml(workspace_root))?;
     doc.get("package")
         .and_then(|p| p.get("version"))
         .and_then(|v| v.as_str())
         .map(str::to_owned)
-        .ok_or_else(|| "Missing `package.version` in locale-rs/Cargo.toml".into())
+        .ok_or_else(|| Error::Version("Missing `package.version` in locale-rs/Cargo.toml".into()))
 }
 
-pub fn bump_locale_rs_version(
-    workspace_root: &Path,
-    bump: BumpKind,
-) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub fn bump_locale_rs_version(workspace_root: &Path, bump: BumpKind) -> Result<(String, String)> {
     let path = locale_rs_cargo_toml(workspace_root);
     let mut doc = load_doc(&path)?;
 
@@ -131,16 +124,18 @@ pub fn bump_locale_rs_version(
         .get("package")
         .and_then(|p| p.get("version"))
         .and_then(|v| v.as_str())
-        .ok_or("Missing `package.version` in locale-rs/Cargo.toml")?
+        .ok_or_else(|| Error::Version("Missing `package.version` in locale-rs/Cargo.toml".into()))?
         .to_owned();
 
     let parts: Vec<u32> = current
         .split('.')
         .map(str::parse)
         .collect::<Result<_, _>>()
-        .map_err(|e| format!("Cannot parse locale-rs version `{current}`: {e}"))?;
+        .map_err(|e| Error::Version(format!("Cannot parse locale-rs version `{current}`: {e}")))?;
     if parts.len() != 3 {
-        return Err(format!("Expected MAJOR.MINOR.PATCH in `{current}`").into());
+        return Err(Error::Version(format!(
+            "Expected MAJOR.MINOR.PATCH in `{current}`"
+        )));
     }
     let (maj, min, pat) = (parts[0], parts[1], parts[2]);
 
@@ -157,7 +152,7 @@ pub fn bump_locale_rs_version(
         let pkg = doc
             .get_mut("package")
             .and_then(|p| p.as_table_mut())
-            .ok_or("`package` is not a table")?;
+            .ok_or_else(|| Error::Version("`package` is not a table".into()))?;
         pkg["version"] = value(&new);
         fs::write(&path, doc.to_string())?;
     }

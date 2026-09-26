@@ -3,11 +3,11 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use locale_rs::Locale;
 #[cfg(feature = "currency")]
-use locale_rs::currency_formats::ToCurrencyString;
+use locale_rs::currency::ToCurrencyString;
 #[cfg(feature = "nums")]
-use locale_rs::num_formats::ToFormattedString;
+use locale_rs::nums::ToFormattedString;
 #[cfg(feature = "datetime")]
-use locale_rs::{datetime_formats::DateTime, *};
+use locale_rs::{datetime::DateTime, *};
 use std::collections::HashSet;
 use std::str::FromStr;
 
@@ -22,31 +22,24 @@ fn bench_datetime_formatting(c: &mut Criterion) {
     group.warm_up_time(std::time::Duration::from_millis(500));
 
     let locale = Locale::en;
-    let dt = DateTime {
-        year: 2023,
-        month: 12,
-        day: 25,
-        hour: 14,
-        minute: 30,
-        second: 5,
-    };
+    let dt = DateTime::new(2023, 12, 25, 14, 30, 5).unwrap();
 
     group.bench_function("format_date", |b| {
-        b.iter(|| locale.format_date(black_box(&dt)))
+        b.iter(|| black_box(&dt).to_date_string(&locale))
     });
 
     group.bench_function("format_time", |b| {
-        b.iter(|| locale.format_time(black_box(&dt)))
+        b.iter(|| black_box(&dt).to_time_string(&locale))
     });
 
     group.bench_function("parse_complex_pattern", |b| {
-        b.iter(|| locale.format_date(black_box(&dt)))
+        b.iter(|| black_box(&dt).to_date_string(&locale))
     });
 
     // Cross-locale formatting with consistent locale set
     for &locale in COMMON_LOCALES {
         group.bench_function(format!("multilingual_date_{}", locale.as_str()), |b| {
-            b.iter(|| locale.format_date(black_box(&dt)))
+            b.iter(|| black_box(&dt).to_date_string(&locale))
         });
     }
 

@@ -3,7 +3,7 @@
 #[allow(unused)]
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 #[cfg(feature = "currency")]
-use locale_rs::{Locale, currency_formats::ToCurrencyString};
+use locale_rs::{Locale, currency::ToCurrencyString};
 #[cfg(feature = "currency")]
 use std::str::FromStr;
 

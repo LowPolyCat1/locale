@@ -1,40 +1,23 @@
-#[cfg(feature = "datetime")]
+use locale_rs::Locale;
+use locale_rs::datetime::{DateSymbols, DateTime, DateTimeFormatter};
+
 fn main() {
-    use locale_rs::{datetime_formats::DateTime, locale::Locale};
-    // Create a base DateTime object
-    let dt = DateTime {
-        year: 2026,
-        month: 1,
-        day: 3,
-        hour: 14,
-        minute: 5,
-        second: 9,
-    };
+    let dt = DateTime::new(2026, 1, 3, 14, 5, 9).expect("valid date");
 
-    // 1. Standard English (US) formatting
-    let locale = Locale::en;
-    println!("English (US):");
-    println!("  Date: {}", locale.format_date(&dt)); // e.g., Jan 3, 2026
-    println!("  Time: {}\n", locale.format_time(&dt)); // e.g., 14:05:09
+    for locale in [Locale::en, Locale::de, Locale::zh_Hans, Locale::ar_EG] {
+        let formatter = DateTimeFormatter::new(locale);
+        println!(
+            "{locale:>7}: {}  {}",
+            formatter.format_date(&dt),
+            formatter.format_time(&dt)
+        );
+    }
 
-    // 2. German (DE) - Uses '.' for dates and 'yy' truncation
-    let locale = Locale::de;
-    println!("German (DE):");
-    println!("  Date: {}\n", locale.format_date(&dt)); // e.g., 03.01.26
+    // The underlying CLDR data is available too.
+    let fr = DateSymbols::for_locale(Locale::fr);
+    println!("fr months: {}", fr.months_wide.join(", "));
+    println!("fr date pattern: {}", fr.date_pattern.source);
 
-    // 3. Chinese (Simplified) - Handles literal characters (年, 月, 日)
-    let locale = Locale::zh_Hans;
-    println!("Chinese (Simplified):");
-    println!("  Date: {}\n", locale.format_date(&dt)); // e.g., 2026年1月3日
-
-    // 4. Arabic (EG) - Demonstrates native digit translation
-    let locale = Locale::ar_EG;
-    println!("Arabic (Egypt):");
-    println!("  Date: {}", locale.format_date(&dt));
-    println!("  Time: {}", locale.format_time(&dt));
-}
-
-#[cfg(not(feature = "datetime"))]
-fn main() {
-    panic!("Feature datetime is not enabled")
+    // Invalid dates are rejected up front.
+    println!("{:?}", DateTime::new(2026, 2, 30, 0, 0, 0));
 }

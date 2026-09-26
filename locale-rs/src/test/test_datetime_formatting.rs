@@ -1,114 +1,114 @@
+use crate::AVAILABLE_LOCALES;
+use crate::datetime::{DatePart, DateSymbols, DateTime, DateTimeFormatter};
+use crate::error::LocaleError;
+use crate::locale::Locale;
 use std::str::FromStr;
 
-use crate::AVAILABLE_LOCALES;
-use crate::datetime_formats::DateTime;
-use crate::locale::Locale;
-
 fn base_dt() -> DateTime {
-    DateTime {
-        year: 2026,
-        month: 1,
-        day: 3,
-        hour: 14,
-        minute: 5,
-        second: 9,
-    }
+    DateTime::new(2026, 1, 3, 14, 5, 9).unwrap()
 }
 
 #[test]
-fn test_public_format_padding_and_names() {
-    let dt = base_dt();
-
-    // Testing 'en' usually hits patterns like 'MMM d, y'
-    // This indirectly tests padding for days and month name lookup
-    let loc_en = Locale::en;
-    let formatted_en = loc_en.format_date(&dt);
-
-    assert!(
-        formatted_en.contains("Jan"),
-        "Should contain abbreviated month"
-    );
-    assert!(formatted_en.contains("2026"), "Should contain full year");
+fn test_english() {
+    assert_eq!(base_dt().to_date_string(&Locale::en), "Jan 3, 2026");
+    assert_eq!(base_dt().to_time_string(&Locale::en), "2:05:09\u{202f}PM");
 }
 
 #[test]
 fn test_literals_via_chinese_locale() {
-    let dt = base_dt();
+    assert_eq!(base_dt().to_date_string(&Locale::zh_Hans), "2026年1月3日");
+}
 
-    // 'zh_Hans' pattern is usually "y年M月d日"
-    // This indirectly tests the private parser's literal/quoting logic
-    let loc_zh = Locale::zh_Hans;
-    let formatted_zh = loc_zh.format_date(&dt);
+#[test]
+fn test_german() {
+    assert_eq!(base_dt().to_date_string(&Locale::de), "03.01.2026");
+    assert_eq!(base_dt().to_time_string(&Locale::de), "14:05:09");
+}
 
-    assert!(
-        formatted_zh.contains("年"),
-        "Should handle literal Chinese year char"
+#[test]
+fn test_native_digits() {
+    let ar = DateTimeFormatter::new(Locale::ar_EG);
+    assert_eq!(
+        ar.format_date(&base_dt()).to_string(),
+        "٠٣\u{200f}/٠١\u{200f}/٢٠٢٦"
     );
-    assert!(
-        formatted_zh.contains("月"),
-        "Should handle literal Chinese month char"
+    assert_eq!(ar.format_time(&base_dt()).to_string(), "٢:٠٥:٠٩ م");
+}
+
+#[test]
+fn test_parsed_patterns() {
+    let en = DateSymbols::for_locale(Locale::en);
+    assert_eq!(en.date_pattern.source, "MMM d, y");
+    assert_eq!(
+        en.date_pattern.parts,
+        [
+            DatePart::Month(3),
+            DatePart::Literal(" "),
+            DatePart::Day(1),
+            DatePart::Literal(", "),
+            DatePart::Year(1)
+        ]
     );
+    assert_eq!(en.months_wide[0], "January");
+    assert_eq!(en.weekdays_wide[0], "Sunday");
 }
 
 #[test]
-fn test_year_truncation_via_locales() {
+fn test_every_locale_formats() {
     let dt = base_dt();
-
-    // Find a locale that uses short years (yy) in its medium format.
-    // Many European locales use dd.MM.yy
-    let loc_de = Locale::de;
-    let formatted_de = loc_de.format_date(&dt);
-
-    // If 'de' uses yy, it will be '26'. If it uses yyyy, it will be '2026'.
-    // This hits the branching logic for 'y' vs 'yy'.
-    assert!(formatted_de.contains("26"));
-}
-
-#[test]
-fn test_time_formatting() {
-    let dt = base_dt();
-    let loc_en = Locale::en;
-    let time_str = loc_en.format_time(&dt);
-
-    // Medium time usually contains seconds and 2-digit minutes
-    // This tests 'HH', 'mm', 'ss' tokens
-    assert!(time_str.contains("05"), "Minute should be padded");
-    assert!(time_str.contains("09"), "Second should be padded");
-}
-
-#[test]
-#[cfg(feature = "nums")]
-fn test_arabic_digit_translation() {
-    let dt = base_dt();
-    // Use the snake_case variant name
-    let loc_ar = Locale::ar_EG;
-
-    let formatted = loc_ar.format_date(&dt);
-    // \u{0662} is '2' in Arabic-Indic, hitting the digit translation logic
-    assert!(formatted.contains('\u{0662}'));
-}
-
-#[test]
-fn test_exhaustive_branch_coverage() {
-    let dt = base_dt();
-    // This is the "Golden" test for 100% coverage.
-    // By calling public methods on every single locale, we force the compiler
-    // to execute every single match arm in the generated date_format_pattern()
-    // and every month name array.
     for locale in AVAILABLE_LOCALES {
-        let loc: Locale = Locale::from_str(locale).unwrap();
-        let date_out = loc.format_date(&dt);
-        let time_out = loc.format_time(&dt);
-
-        assert!(!date_out.is_empty());
-        assert!(!time_out.is_empty());
+        let loc = Locale::from_str(locale).unwrap();
+        assert!(!dt.to_date_string(&loc).is_empty());
+        assert!(!dt.to_time_string(&loc).is_empty());
     }
 }
 
 #[test]
-fn test_datetime_struct_properties() {
+fn test_validation() {
+    assert!(DateTime::new(2024, 2, 29, 0, 0, 0).is_ok());
+    assert!(DateTime::new(2000, 2, 29, 0, 0, 0).is_ok());
+    assert_eq!(
+        DateTime::new(1900, 2, 29, 0, 0, 0),
+        Err(LocaleError::InvalidDateTime {
+            field: "day",
+            value: 29
+        })
+    );
+    assert_eq!(
+        DateTime::new(2026, 0, 1, 0, 0, 0),
+        Err(LocaleError::InvalidDateTime {
+            field: "month",
+            value: 0
+        })
+    );
+    assert!(DateTime::new(2026, 4, 31, 0, 0, 0).is_err());
+    assert!(DateTime::new(2026, 1, 1, 24, 0, 0).is_err());
+    assert!(DateTime::new(2026, 1, 1, 0, 60, 0).is_err());
+    assert!(DateTime::new(2026, 1, 1, 0, 0, 60).is_err());
+}
+
+#[test]
+fn test_weekday() {
+    assert_eq!(DateTime::from_ymd(2026, 1, 3).unwrap().weekday(), 6);
+    assert_eq!(DateTime::from_ymd(2000, 1, 1).unwrap().weekday(), 6);
+    assert_eq!(DateTime::from_ymd(1970, 1, 1).unwrap().weekday(), 4);
+    // Proleptic Gregorian: 1 BC (year 0) ended on a Sunday.
+    assert_eq!(DateTime::from_ymd(0, 12, 31).unwrap().weekday(), 0);
+    assert!(DateTime::from_ymd(-4000, 3, 1).unwrap().weekday() < 7);
+}
+
+#[test]
+fn test_accessors() {
     let dt = base_dt();
-    let dt2 = dt; // DateTime is Copy
-    assert_eq!(dt.year, dt2.year);
-    assert_eq!(dt.month, dt2.month);
+    assert_eq!(
+        (
+            dt.year(),
+            dt.month(),
+            dt.day(),
+            dt.hour(),
+            dt.minute(),
+            dt.second()
+        ),
+        (2026, 1, 3, 14, 5, 9)
+    );
 }

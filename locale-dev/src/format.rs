@@ -1,36 +1,20 @@
+use crate::error::{Error, Result};
+use std::path::PathBuf;
 use std::process::Command;
 
-pub fn format_generated_code() {
-    tracing::info!("Refining generated code in locale-rs...");
-
-    let fmt_status = Command::new("cargo")
-        .arg("fmt")
-        .arg("-p")
-        .arg("locale-rs")
-        .status()
-        .expect("Failed to execute cargo fmt");
-
-    if fmt_status.success() {
-        tracing::info!("Successfully formatted locale-rs.");
+/// Runs rustfmt over the generated files so they match `cargo fmt`.
+pub fn format_generated_code(files: &[PathBuf]) -> Result<()> {
+    tracing::info!("Formatting {} generated files...", files.len());
+    let output = Command::new("rustfmt")
+        .args(["--edition", "2024"])
+        .args(files)
+        .output()
+        .map_err(|e| Error::Rustfmt(format!("could not run rustfmt: {e}")))?;
+    if output.status.success() {
+        Ok(())
     } else {
-        panic!("Cargo fmt encountered errors.");
-    }
-
-    let clippy_status = Command::new("cargo")
-        .arg("clippy")
-        .arg("-p")
-        .arg("locale-rs")
-        .arg("--fix")
-        .arg("--allow-dirty")
-        .arg("--")
-        .arg("-D")
-        .arg("warnings")
-        .status()
-        .expect("Failed to execute cargo clippy");
-
-    if clippy_status.success() {
-        tracing::info!("Clippy checks passed/fixed for locale-rs.");
-    } else {
-        tracing::error!("Clippy found issues that require manual attention.");
+        Err(Error::Rustfmt(
+            String::from_utf8_lossy(&output.stderr).into_owned(),
+        ))
     }
 }

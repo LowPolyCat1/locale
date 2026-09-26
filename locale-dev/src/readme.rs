@@ -11,6 +11,7 @@
 //! it can hold whole lines (badges, code fences, tables). Any other template is
 //! inline and trimmed, e.g. `<!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->`.
 
+use crate::error::{Error, Result};
 use crate::version::{read_locale_rs_version, read_workspace_cldr_version};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,24 +28,20 @@ const CLOSE: &str = "<!-- /gen -->";
 /// so adding a feature without documenting it fails the README check.
 const FEATURE_DESCRIPTIONS: &[(&str, &str)] = &[
     (
-        "rebuild",
-        "Reserved for code regeneration; has no effect on the API.",
-    ),
-    (
         "strum",
         "Derives `strum` traits on `Locale`, e.g. iterating over all locales.",
     ),
     (
         "datetime",
-        "Localized month and weekday names and patterns (`datetime_formats`).",
+        "Localized date and time formatting (`datetime` module).",
     ),
     (
         "nums",
-        "Locale-aware number formatting with native digits (`num_formats`).",
+        "Locale-aware number formatting with native digits (`nums` module).",
     ),
     (
         "currency",
-        "ICU-compatible currency formatting patterns (`currency_formats`).",
+        "Currency formatting from CLDR currency patterns (`currency` module).",
     ),
     ("all", "Every feature above."),
 ];
@@ -72,8 +69,12 @@ impl Facts {
 }
 
 /// The Cargo requirement users should write for `version`: `0.3.1` -> `0.3`,
-/// `1.2.0` -> `1`.
+/// `1.2.0` -> `1`. A pre-release such as `0.4.0-rc.1` is only matched by a
+/// requirement naming it, so it is returned unchanged.
 pub fn version_req(version: &str) -> String {
+    if version.contains('-') {
+        return version.to_owned();
+    }
     let mut parts = version.split('.');
     match (parts.next(), parts.next()) {
         (Some("0"), Some(minor)) => format!("0.{minor}"),
@@ -82,11 +83,12 @@ pub fn version_req(version: &str) -> String {
     }
 }
 
-pub fn collect_facts(workspace_root: &Path) -> Result<Facts, Box<dyn std::error::Error>> {
-    let cldr_version = read_workspace_cldr_version(workspace_root)?
-        .ok_or("Missing `[workspace.metadata.cldr] version` in Cargo.toml")?;
+pub fn collect_facts(workspace_root: &Path) -> Result<Facts> {
+    let cldr_version = read_workspace_cldr_version(workspace_root)?.ok_or_else(|| {
+        Error::Readme("Missing `[workspace.metadata.cldr] version` in Cargo.toml".into())
+    })?;
     let locale_rs = workspace_root.join("locale-rs");
-    let locale_count = count_locales(&fs::read_to_string(locale_rs.join("src/locale.rs"))?)?;
+    let locale_count = count_locales(&fs::read_to_string(locale_rs.join("src/data/locales.rs"))?)?;
     let crate_version = read_locale_rs_version(workspace_root)?;
     let manifest: DocumentMut = fs::read_to_string(locale_rs.join("Cargo.toml"))?.parse()?;
     let feature_table = feature_table(&manifest)?;
@@ -98,26 +100,29 @@ pub fn collect_facts(workspace_root: &Path) -> Result<Facts, Box<dyn std::error:
     })
 }
 
-/// Reads `N` from `AVAILABLE_LOCALES: [&str; N]` in the generated `locale.rs`.
-pub fn count_locales(locale_rs: &str) -> Result<usize, Box<dyn std::error::Error>> {
+/// Reads `N` from `AVAILABLE_LOCALES: [&str; N]` in the generated `data/locales.rs`.
+pub fn count_locales(locale_rs: &str) -> Result<usize> {
     const DECL: &str = "AVAILABLE_LOCALES: [&str;";
     let start = locale_rs
         .find(DECL)
-        .ok_or("`AVAILABLE_LOCALES` not found in locale.rs")?
+        .ok_or_else(|| Error::Readme("`AVAILABLE_LOCALES` not found in data/locales.rs".into()))?
         + DECL.len();
     let end = start
         + locale_rs[start..]
             .find(']')
-            .ok_or("Malformed `AVAILABLE_LOCALES` declaration")?;
-    Ok(locale_rs[start..end].trim().parse()?)
+            .ok_or_else(|| Error::Readme("Malformed `AVAILABLE_LOCALES` declaration".into()))?;
+    locale_rs[start..end]
+        .trim()
+        .parse()
+        .map_err(|e| Error::Readme(format!("Malformed `AVAILABLE_LOCALES` length: {e}")))
 }
 
 /// Markdown table of the `[features]` of locale-rs, in manifest order.
-pub fn feature_table(manifest: &DocumentMut) -> Result<String, Box<dyn std::error::Error>> {
+pub fn feature_table(manifest: &DocumentMut) -> Result<String> {
     let features = manifest
         .get("features")
         .and_then(|f| f.as_table_like())
-        .ok_or("Missing `[features]` in locale-rs/Cargo.toml")?;
+        .ok_or_else(|| Error::Readme("Missing `[features]` in locale-rs/Cargo.toml".into()))?;
 
     let mut rows = vec![
         "| Feature | Enables | Description |".to_owned(),
@@ -131,13 +136,13 @@ pub fn feature_table(manifest: &DocumentMut) -> Result<String, Box<dyn std::erro
             .find(|(n, _)| *n == name)
             .map(|(_, d)| *d)
             .ok_or_else(|| {
-                format!(
+                Error::Readme(format!(
                     "Feature `{name}` has no description; add it to FEATURE_DESCRIPTIONS in locale-dev/src/readme.rs"
-                )
+                ))
             })?;
         let enables: Vec<String> = item
             .as_array()
-            .ok_or_else(|| format!("Feature `{name}` is not an array"))?
+            .ok_or_else(|| Error::Readme(format!("Feature `{name}` is not an array")))?
             .iter()
             .filter_map(|v| v.as_str())
             .map(|v| match v.strip_prefix("dep:") {
@@ -154,10 +159,9 @@ pub fn feature_table(manifest: &DocumentMut) -> Result<String, Box<dyn std::erro
     }
 
     if let Some((stale, _)) = FEATURE_DESCRIPTIONS.iter().find(|(n, _)| !seen.contains(n)) {
-        return Err(format!(
+        return Err(Error::Readme(format!(
             "FEATURE_DESCRIPTIONS lists `{stale}`, which is not a feature of locale-rs"
-        )
-        .into());
+        )));
     }
 
     Ok(rows.join("\n"))
@@ -230,16 +234,14 @@ pub fn render(text: &str, facts: &Facts) -> Result<String, String> {
 
 /// Re-renders all README files. With `check`, nothing is written and the
 /// returned list names the files that are out of date.
-pub fn sync(
-    workspace_root: &Path,
-    check: bool,
-) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+pub fn sync(workspace_root: &Path, check: bool) -> Result<Vec<PathBuf>> {
     let facts = collect_facts(workspace_root)?;
     let mut stale = Vec::new();
     for file in README_FILES {
         let path = workspace_root.join(file);
         let current = fs::read_to_string(&path)?;
-        let rendered = render(&current, &facts).map_err(|e| format!("{file}: {e}"))?;
+        let rendered =
+            render(&current, &facts).map_err(|e| Error::Readme(format!("{file}: {e}")))?;
         if rendered == current {
             continue;
         }

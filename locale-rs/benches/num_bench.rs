@@ -3,7 +3,10 @@
 #[allow(unused)]
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 #[cfg(feature = "nums")]
-use locale_rs::{Locale, num_formats::ToFormattedString};
+use locale_rs::{
+    Locale,
+    nums::{NumberFormatter, ToFormattedString},
+};
 
 #[cfg(feature = "nums")]
 fn bench_integer_formatting(c: &mut Criterion) {
@@ -285,8 +288,33 @@ fn bench_batch_operations(c: &mut Criterion) {
 }
 
 #[cfg(feature = "nums")]
+fn bench_display_into_buffer(c: &mut Criterion) {
+    use std::fmt::Write;
+
+    let mut group = c.benchmark_group("Display Into Buffer");
+    group.sample_size(100);
+    group.measurement_time(std::time::Duration::from_secs(3));
+    group.warm_up_time(std::time::Duration::from_millis(500));
+
+    // Writing through `Display` into a reused buffer allocates nothing.
+    for locale in [Locale::en, Locale::ar_EG] {
+        let formatter = NumberFormatter::new(locale);
+        let mut buf = String::with_capacity(64);
+        group.bench_function(format!("write_{}", locale.as_str()), |b| {
+            b.iter(|| {
+                buf.clear();
+                write!(buf, "{}", formatter.format(black_box(-1234567.891f64))).unwrap();
+                black_box(buf.len())
+            })
+        });
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
+    bench_display_into_buffer,
     bench_integer_formatting,
     bench_float_formatting,
     bench_digit_grouping,

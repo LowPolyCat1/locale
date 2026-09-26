@@ -1,467 +1,148 @@
 # locale-dev
 
-A code generation tool that automatically generates the `locale-rs` library from Unicode CLDR data.
+The code generator that produces the CLDR data tables of `locale-rs`.
 
 ## Overview
 
 `locale-dev` is an internal development tool that:
 
-1. **Fetches** the latest CLDR (Common Locale Data Repository) data from GitHub
-2. **Parses** locale definitions, number formats, currency patterns, and datetime data
-3. **Generates** strongly-typed Rust code for the `locale-rs` library
-4. **Formats** and lints the generated code using `cargo fmt` and `cargo clippy`
+1. **Fetches** the latest CLDR-JSON release from GitHub (or reads a local archive)
+2. **Reads** the archive once into a typed model (`cldr.rs`)
+3. **Parses** number, currency and date patterns at generation time (`patterns.rs`)
+4. **Emits** the data modules in `locale-rs/src/data/` (`emit/`) and formats them with rustfmt
 
-This ensures that `locale-rs` stays perfectly in sync with the latest Unicode standards without manual maintenance.
+Only data is generated. All formatting logic in `locale-rs` is handwritten Rust that is reviewed, linted and tested like any other code.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Rust 1.70+
-- Internet connection (for GitHub API access)
-- ~100MB disk space (for CLDR ZIP cache)
+- The Rust toolchain from `rust-version` in `locale-rs/Cargo.toml`, with `rustfmt`
+- Internet connection for the GitHub API, unless you use `--archive`
 
-### Running Code Generation
+### Commands
 
 ```bash
-# Generate code from the latest CLDR release
+# Update to the latest CLDR release, if it is newer than the recorded one:
+# downloads into ./cache, regenerates the data, bumps the locale-rs version,
+# records the new CLDR version and syncs the READMEs.
 cargo run -p locale-dev
 
-# The tool will:
-# 1. Check GitHub for the latest CLDR-JSON release
-# 2. Download or use cached ZIP file
-# 3. Generate locale.rs, num_formats.rs, currency_formats.rs, datetime_formats.rs
-# 4. Format and lint the generated code
+# Regenerate from a local cldr-json archive. Versions stay untouched, which is
+# what you want after changing the generator itself, or when offline.
+cargo run -p locale-dev -- --archive cache/cldr-48.2.2-json-full.zip
+
+# Sync or check the generated README sections.
+cargo run -p locale-dev -- readme
+cargo run -p locale-dev -- readme --check
 ```
 
-### Output
-
-Generated files are written to:
-- `locale-rs/src/locale.rs` - Locale enum and core methods
-- `locale-rs/src/num_formats.rs` - Number formatting data and traits
-- `locale-rs/src/currency_formats.rs` - Currency formatting patterns
-- `locale-rs/src/datetime_formats.rs` - DateTime formatting data
+A local archive needs the layout of the `cldr-json` release assets: `cldr-core/`, `cldr-numbers-full/` and `cldr-dates-full/` at the top level.
 
 ## Architecture
 
-### Module Structure
-
 ```
 locale-dev/src/
-├── main.rs                          # Entry point, orchestrates pipeline
-├── lib.rs                           # Module exports and utilities
-├── error.rs                         # Error types
-├── download_latest.rs               # GitHub API integration & caching
-├── generate_locales.rs              # Generates Locale enum
-├── generate_num_formats.rs          # Generates number formatting
-├── generate_currency_formatting.rs  # Generates currency patterns
-├── generate_datetime_formatting.rs  # Generates datetime data
-├── format.rs                        # Code formatting & linting
-└── test.rs                          # Tests
+├── main.rs              # CLI: update, --archive, readme
+├── lib.rs               # generate(): runs every emitter, then rustfmt
+├── cldr.rs              # Reads the archive once into the `Cldr` model
+├── patterns.rs          # Parsers for number, currency and date patterns
+├── emit/
+│   ├── mod.rs           # `Pool` (deduplication) and `RustFile` (output)
+│   ├── locales.rs       # -> data/locales.rs
+│   ├── numbers.rs       # -> data/numbers.rs
+│   ├── dates.rs         # -> data/dates.rs
+│   └── currency.rs      # -> data/currency.rs
+├── format.rs            # rustfmt over the generated files
+├── download_latest.rs   # GitHub API and download cache
+├── version.rs           # CLDR and crate version bookkeeping
+├── readme.rs            # Generated README sections
+├── error.rs             # `Error` type
+└── test.rs              # Integration tests against synthesized archives
 ```
 
-### Data Flow
+### The model (`cldr.rs`)
 
-```
-GitHub (CLDR-JSON Release)
-    ↓
-download_latest::get_latest_asset()
-    ↓ (caches in cache/ directory)
-    ↓
-generate_locales::run()
-generate_num_formats::run()
-generate_currency_formatting::run()
-generate_datetime_formatting::run()
-    ↓
-format::format_generated_code()
-    ↓ (cargo fmt + cargo clippy)
-    ↓
-locale-rs/src/*.rs (updated)
-```
+`Cldr::from_zip` opens the archive once and extracts everything `locale-rs` needs into plain structs: per locale its number symbols and patterns, Gregorian names and medium patterns, currency pattern, default currency and currency symbols, and its parent locale; plus the fraction digits of every currency. No emitter ever sees JSON.
 
-## Module Documentation
+CLDR rules resolved here:
 
-### `download_latest.rs`
+- **Parent locales** come from `parentLocales.json` (`en-IN` inherits from `en-001`), then the `nonlikelyScript` rule (`sr-Latn` inherits from root because Latin is not Serbian's likely script), then subtag truncation. Ancestors missing from the archive are skipped.
+- **Default currency** is the tender of the locale's own region, else of its language's likely region (`de` is `DE`). Macro-regions such as `419` have no currency and get `USD`.
 
-Fetches CLDR data from GitHub and manages local caching.
+### The emitters (`emit/`)
 
-**Key Function**: `get_latest_asset() -> Result<Option<CldrAsset>>`
+Each emitter turns the model into one Rust file of `static` tables indexed by `Locale as usize`:
 
-- Queries GitHub API for the latest CLDR-JSON release
-- Downloads the `cldr-{version}-json-full.zip` file
-- Caches in `cache/` directory to avoid re-downloading
-- Returns `None` if local cache is already up-to-date
+| Output | Contents |
+| --- | --- |
+| `data/locales.rs` | `CLDR_VERSION`, `AVAILABLE_LOCALES`, the `Locale` enum, a `phf` map for parsing and the parent table |
+| `data/numbers.rs` | `NumberSymbols` per locale, with native digit tables |
+| `data/dates.rs` | Month and weekday names, `DatePattern`s pre-parsed into `DatePart`s |
+| `data/currency.rs` | Pre-parsed `CurrencyPattern`s, default currencies, symbol overrides, fraction digits |
 
-**Caching Strategy**:
-- First run: Downloads ~100MB ZIP file
-- Subsequent runs: Uses cached file if no newer release exists
-- To force re-download: `rm cache/cldr-*.zip`
+Identical values (a month list, a symbol set, a pattern) are stored once through `Pool`. Currency symbols are stored as overrides of the parent locale, and `locale-rs` walks the fallback chain at runtime; the emitter checks that this resolves every symbol exactly as CLDR lists it.
 
-### `generate_locales.rs`
+Items are built with `quote!` and laid out with `prettyplease`; per-locale tables are written one entry per line with the locale as a comment, so a CLDR update produces a reviewable diff. rustfmt runs last, so the output is identical to `cargo fmt`.
 
-Generates the `Locale` enum and core locale manipulation methods.
+The `phf` map is built here with `phf_codegen`, so users of `locale-rs` do not compile the `phf` proc-macro.
 
-**Key Function**: `run(zip_buffer, asset_name, output_path) -> Result<()>`
+### Handwritten types
 
-**Generated Code Includes**:
+The types the tables are made of live in `locale-rs`, not here: `Grouping` and `NumberSymbols` in `data/mod.rs`, the date types in `datetime.rs`, `Currency` and `CurrencyPattern` in `currency.rs`. Changing a type means changing its emitter to match.
 
-1. **Locale Enum** (<!-- gen:{{locale_count}} -->766<!-- /gen --> variants)
-   ```rust
-   pub enum Locale {
-   }
-   ```
+## Update README Sections
 
-2. **Core Methods**:
-   - `as_str()` - String representation
-   - `fallback()` - Parent locale in fallback chain
-   - `language_code()` - Extract language subtag
-   - `region_code()` - Extract region subtag
-   - `from_flexible()` - Parse with flexible formatting
-   - `negotiate()` - Find best match from available list
-   - `suggest()` - Fuzzy locale suggestions
-
-3. **Trait Implementations**:
-   - `FromStr` - Parse from strings
-   - `TryFrom<&str>` - Fallible conversion
-   - `From<Locale>` for string types
-   - `Display` - Format as string
-
-**Locale Extraction**:
-- Scans CLDR ZIP for directories matching `/main/{locale}/`
-- Extracts locale identifier from path
-- Sorts alphabetically for deterministic output
-
-**Fallback Chain**:
-- Automatically detects parent locales
-- Example: `en_GB` → `en` → `None`
-- Used for locale negotiation
-
-### `generate_num_formats.rs`
-
-Generates number formatting data and the `ToFormattedString` trait.
-
-**Key Function**: `run(zip_buffer, asset_name, output_path) -> Result<()>`
-
-**Generated Code Includes**:
-
-1. **Formatting Data Methods**:
-   - `decimal_separator()` - Decimal point character ("." or ",")
-   - `grouping_separator()` - Thousands separator ("," or " ")
-   - `grouping_sizes()` - Array of grouping sizes
-   - `minus_sign()` - Negative sign character
-   - `digits()` - Native digit characters (e.g., Arabic-Indic)
-
-2. **`ToFormattedString` Trait**:
-   - Implemented for all integer types (i8-i128, u8-u128, isize, usize)
-   - Implemented for floating-point types (f32, f64)
-   - Handles special cases: NaN, Infinity, negative numbers
-
-3. **Helper Functions**:
-   - `translate_digits()` - Convert ASCII to native digits
-   - `_format_int_str()` - Apply grouping separators
-
-**Numbering System Support**:
-- Reads `numberingSystems.json` from CLDR
-- Supports: Latin, Arabic-Indic, Devanagari, Bengali, etc.
-- Automatically detects native digit characters
-
-**Grouping Analysis**:
-- Parses ICU DecimalFormat patterns
-- Extracts grouping sizes (e.g., [3] for thousands, [2,2,3] for Indian)
-- Handles multiple grouping levels
-
-### `generate_currency_formatting.rs`
-
-Generates currency formatting patterns for each locale.
-
-**Key Function**: `run(zip_buffer, asset_name, output_path) -> Result<()>`
-
-**Generated Code Includes**:
-
-1. **Pattern Methods**:
-   - `currency_standard_pattern()` - Standard currency format
-   - `currency_accounting_pattern()` - Accounting format (optional)
-
-2. **Pattern Format** (ICU DecimalFormat syntax):
-   - `¤` = currency symbol placeholder
-   - `#,##0.00` = number format
-   - `\u{a0}` = non-breaking space
-   - `;` = positive;negative pattern separator
-
-**Example Patterns**:
-```
-"¤#,##0.00"           // $1,234.56 (US English)
-"#,##0.00\u{a0}¤"    // 1.234,56 € (German)
-"¤\u{a0}#,##0.00"    // $ 1,234.56 (French)
-```
-
-### `generate_datetime_formatting.rs`
-
-Generates datetime formatting data for each locale.
-
-**Key Function**: `run(zip_buffer, asset_name, output_path) -> Result<()>`
-
-**Generated Code Includes**:
-
-1. **DateTime Struct**:
-   ```rust
-   pub struct DateTime {
-       pub year: i32,
-       pub month: u32,   // 1-12
-       pub day: u32,     // 1-31
-       pub hour: u32,    // 0-23
-       pub minute: u32,  // 0-59
-       pub second: u32,  // 0-59
-   }
-   ```
-
-2. **Locale Data Methods**:
-   - `months_wide()` - Full month names
-   - `months_abbreviated()` - Short month names
-   - `weekdays_wide()` - Full weekday names
-   - `weekdays_abbreviated()` - Short weekday names
-   - `eras()` - Era names (AD, BC, etc.)
-   - `date_format_pattern()` - Date formatting pattern
-   - `time_format_pattern()` - Time formatting pattern
-   - `datetime_format_pattern()` - Combined datetime pattern
-
-### `format.rs`
-
-Post-generation code formatting and linting.
-
-**Key Function**: `format_generated_code()`
-
-- Runs `cargo fmt -p locale-rs` for consistent style
-- Runs `cargo clippy -p locale-rs --fix` for linting
-- Ensures generated code quality and consistency
-
-### `lib.rs`
-
-Module exports and shared utilities.
-
-**Key Function**: `sanitize_variant(name: &str) -> String`
-
-- Converts locale strings to valid Rust identifiers
-- Replaces hyphens with underscores (e.g., "en-GB" → "en_GB")
-- Escapes Rust keywords with trailing underscore (e.g., "as" → "as_")
-
-**Rust Keywords Handled**:
-```
-as, break, const, continue, crate, else, enum, extern, false, fn, for,
-if, impl, in, let, loop, match, mod, move, mut, pub, ref, return,
-self, Self, static, struct, super, trait, true, type, unsafe, use, where,
-while, async, await, dyn, abstract, become, box, do, final, macro,
-override, priv, typeof, unsized, virtual, yield, try
-```
-
-## Usage Examples
-
-### Basic Code Generation
-
-<!-- gen:
-```bash
-# Generate from latest CLDR release
-cargo run -p locale-dev
-
-# Output:
-# Checking GitHub for the latest CLDR asset...
-# Using cached file: cache/cldr-{{cldr_version}}-json-full.zip
-# generating locales
-# Generated {{locale_count}} locales.
-# Refining generated code in locale-rs...
-# Successfully formatted locale-rs.
-# Clippy checks passed/fixed for locale-rs.
-```
--->
-```bash
-# Generate from latest CLDR release
-cargo run -p locale-dev
-
-# Output:
-# Checking GitHub for the latest CLDR asset...
-# Using cached file: cache/cldr-48.2.2-json-full.zip
-# generating locales
-# Generated 766 locales.
-# Refining generated code in locale-rs...
-# Successfully formatted locale-rs.
-# Clippy checks passed/fixed for locale-rs.
-```
-<!-- /gen -->
-
-### Force Re-download
-
-```bash
-# Remove cached file
-rm cache/cldr-*.zip
-
-# Run generation (will download fresh copy)
-cargo run -p locale-dev
-```
-
-### Check for Updates
-
-```bash
-# The tool automatically checks GitHub for newer releases
-# If local cache is up-to-date, it will report:
-# "Local code is already up-to-date. No action needed."
-```
-
-### Update README Sections
-
-Values that come from the code (CLDR version, locale count, crate version, feature table) are
-generated into the READMEs. Code generation refreshes them automatically; after editing
-`locale-rs/Cargo.toml` by hand, run:
+Values that come from the code (CLDR version, locale count, crate version, feature table) are generated into the READMEs. Code generation refreshes them automatically; after editing `locale-rs/Cargo.toml` by hand, run:
 
 ```bash
 cargo run -p locale-dev -- readme          # rewrite the generated sections
 cargo run -p locale-dev -- readme --check  # only report outdated files (exit code 1)
 ```
 
-A generated section is an HTML comment `gen:TEMPLATE`, followed by the rendered text and a
-closing `/gen` comment (view the raw Markdown for examples). Edit the template, never the rendered part: the `readme` CI check fails if they disagree. Placeholders are
-`{{cldr_version}}`, `{{locale_count}}`, `{{crate_version}}`, `{{crate_version_req}}` and
-`{{feature_table}}`. A template starting with a line break spans whole lines (badges, code
-blocks, tables). New Cargo features need a description in `FEATURE_DESCRIPTIONS` in
-`src/readme.rs`.
+A generated section is an HTML comment `gen:TEMPLATE`, followed by the rendered text and a closing `/gen` comment (view the raw Markdown for examples). Edit the template, never the rendered part: the `readme` CI check fails if they disagree. Placeholders are `{{cldr_version}}`, `{{locale_count}}`, `{{crate_version}}`, `{{crate_version_req}}` and `{{feature_table}}`. A template starting with a line break spans whole lines (badges, code blocks, tables). New Cargo features need a description in `FEATURE_DESCRIPTIONS` in `src/readme.rs`.
+
+The data currently covers <!-- gen:{{locale_count}} -->766<!-- /gen --> locales from CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen -->.
 
 ## Development
 
 ### Running Tests
 
 ```bash
-# Run all tests
 cargo test -p locale-dev
-
-# Run with output
-cargo test -p locale-dev -- --nocapture
 ```
+
+The tests synthesize small CLDR archives in memory, so they need neither network access nor rustfmt.
+
+### Adding Data
+
+To expose more CLDR data in `locale-rs`:
+
+1. Extend the model in `cldr.rs` and read the value from the archive there.
+2. Add or extend the handwritten type in `locale-rs` that holds it.
+3. Emit it from the matching module in `emit/`, interning repeated values with `Pool`.
+4. Regenerate with `cargo run -p locale-dev -- --archive <zip>` and add tests on both sides.
 
 ### Debugging
 
-Enable verbose logging:
-
-```bash
-# Set RUST_LOG environment variable
-RUST_LOG=debug cargo run -p locale-dev
-```
-
-The tool uses `tracing` for structured logging:
-- `info!()` - General progress messages
-- `error!()` - Error conditions
-
-### Adding New Generators
-
-To add a new code generator:
-
-1. **Create Module**: `locale-dev/src/generate_*.rs`
-2. **Implement Function**: `pub fn run(zip_buffer, asset_name, output_path) -> Result<()>`
-3. **Update Main**: Add call in `locale-dev/src/main.rs`
-4. **Export Module**: Add to `locale-dev/src/lib.rs`
-5. **Add Public Module**: Export in `locale-rs/src/lib.rs`
-
-Example:
-
-```rust
-// locale-dev/src/generate_custom.rs
-pub fn run(
-    zip_buffer: Vec<u8>,
-    asset_name: &str,
-    output_path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Parse CLDR data
-    // Generate Rust code
-    // Write to output_path
-    Ok(())
-}
-```
-
-## Performance
-
-### Generation Time
-
-- **Download**: 10-30 seconds (first run, depends on network)
-- **Parsing**: 5-10 seconds
-- **Code Generation**: 2-5 seconds
-- **Formatting**: 10-20 seconds
-- **Total**: ~30-60 seconds (first run), ~20-40 seconds (cached)
-
-### Output Size
-
-- `locale.rs`: ~50KB (<!-- gen:{{locale_count}} -->766<!-- /gen --> locale variants)
-- `num_formats.rs`: ~150KB (formatting data)
-- `currency_formats.rs`: ~200KB (currency patterns)
-- `datetime_formats.rs`: ~300KB (datetime data)
-- **Total**: ~700KB of generated code
-
-### Memory Usage
-
-- Peak memory during generation: ~500MB (ZIP parsing)
-- Generated binary impact: Minimal (static data)
+The tool logs through `tracing`; set `RUST_LOG=debug` for more detail.
 
 ## Troubleshooting
 
-### Network Issues
+**Network issues or timeouts**: download the `*-json-full.zip` asset from the [cldr-json releases](https://github.com/unicode-org/cldr-json/releases) yourself and run with `--archive`.
 
-**Problem**: "Failed to connect to GitHub"
+**`rustfmt failed`**: install it with `rustup component add rustfmt`.
 
-**Solution**:
-```bash
-# Check internet connection
-ping api.github.com
-
-# Use cached file if available
-# The tool will use cache/cldr-*.zip if it exists
-```
-
-### Timeout Issues
-
-**Problem**: "Request timeout"
-
-**Solution**:
-- The tool has a 300-second timeout for downloads
-- For slow connections, manually download the ZIP:
-  ```bash
-  # Download from: https://github.com/unicode-org/cldr-json/releases
-  # Place in: cache/cldr-{version}-json-full.zip
-  ```
-
-### Formatting Errors
-
-**Problem**: "Cargo fmt encountered errors"
-
-**Solution**:
-```bash
-# Check if cargo fmt is installed
-cargo fmt --version
-
-# Update Rust
-rustup update
-```
-
-### Clippy Issues
-
-**Problem**: "Clippy found issues that require manual attention"
-
-**Solution**:
-- Review the generated code for warnings
-- Some warnings may require manual fixes
-- Check `locale-rs/src/*.rs` for issues
-
-## Contributing
-
-Improvements to the code generation pipeline are welcome! Areas for contribution:
-
-- **Performance**: Optimize parsing and generation
-- **Accuracy**: Improve CLDR data extraction
-- **Features**: Add new formatting capabilities
-- **Testing**: Expand test coverage
+**Force a re-download**: delete `cache/cldr-*.zip`.
 
 ## Dependencies
 
-- `reqwest` - HTTP client for GitHub API
-- `zip` - ZIP file handling
+- `reqwest` - HTTP client for the GitHub API
+- `zip` - Archive reading
 - `serde` & `serde_json` - JSON parsing
-- `quote` & `proc-macro2` - Code generation
+- `quote`, `proc-macro2`, `syn` & `prettyplease` - Code generation
+- `phf_codegen` - The perfect hash map of locale identifiers
+- `toml_edit` - Version bookkeeping in `Cargo.toml`
 - `thiserror` - Error handling
 - `tracing` & `tracing-subscriber` - Logging
 
@@ -476,6 +157,6 @@ at your option.
 
 ## See Also
 
-- [locale-rs](../locale-rs/README.md) - The generated library
+- [locale-rs](../locale-rs/README.md) - The library the data is generated for
 - [CLDR Project](https://cldr.unicode.org/) - Unicode locale data source
 - [CLDR-JSON Repository](https://github.com/unicode-org/cldr-json) - GitHub source

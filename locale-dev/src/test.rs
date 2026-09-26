@@ -1,16 +1,13 @@
+use crate::cldr::Cldr;
 use crate::sanitize_variant;
 use crate::version::{
     BumpKind, CldrVersion, bump_locale_rs_version, classify_cldr_bump, parse_version_from_asset,
     read_locale_rs_version, read_workspace_cldr_version, write_workspace_cldr_version,
 };
-use crate::{
-    generate_currency_formatting, generate_datetime_formatting, generate_locales,
-    generate_num_formats, readme,
-};
+use crate::{emit, readme};
 
 use std::fs;
 use std::io::{Cursor, Write};
-use std::path::Path;
 use tempfile::TempDir;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
@@ -350,213 +347,221 @@ fn bump_fails_when_version_has_non_numeric_component() {
 // Integration: generate_* against a synthesised minimal CLDR zip
 // ---------------------------------------------------------------------------
 
-/// Build an in-memory zip whose layout looks like a CLDR `*-json-full.zip`:
-/// `cldr-misc-full/main/{locale}/` directory entries. The generators only
-/// scrape locale names from these directory paths, so this is enough to
-/// exercise their core flow without bundling real CLDR JSON.
-fn make_minimal_cldr_zip(locales: &[&str]) -> Vec<u8> {
+/// Supplemental files every archive needs; the per-locale files are optional.
+const SUPPLEMENTAL: &[(&str, &str)] = &[
+    (
+        "cldr-core/supplemental/numberingSystems.json",
+        r#"{"supplemental":{"numberingSystems":{
+            "arab":{"_type":"numeric","_digits":"٠١٢٣٤٥٦٧٨٩"},
+            "latn":{"_type":"numeric","_digits":"0123456789"}}}}"#,
+    ),
+    (
+        "cldr-core/supplemental/likelySubtags.json",
+        r#"{"supplemental":{"likelySubtags":{
+            "en":"en-Latn-US","de":"de-Latn-DE","ar":"ar-Arab-EG","zh":"zh-Hans-CN"}}}"#,
+    ),
+    (
+        "cldr-core/supplemental/parentLocales.json",
+        r#"{"supplemental":{"parentLocales":{"parentLocale":{"en-IN":"en-001"}}}}"#,
+    ),
+    (
+        "cldr-core/supplemental/currencyData.json",
+        r#"{"supplemental":{"currencyData":{
+            "fractions":{"DEFAULT":{"_digits":"2"},"JPY":{"_digits":"0"}},
+            "region":{
+                "US":[{"USD":{"_from":"1792-01-01"}}],
+                "DE":[{"DEM":{"_to":"2002-02-28"}},{"EUR":{"_from":"1999-01-01"}}],
+                "AT":[{"EUR":{"_from":"1999-01-01"}}],
+                "EG":[{"EGP":{"_from":"1885-11-14"}}]}}}}"#,
+    ),
+];
+
+/// Builds an in-memory zip with the layout of a CLDR `*-json-full.zip`:
+/// the supplemental files, a `cldr-misc-full/main/{locale}/` entry per
+/// locale, and any extra `(path, contents)` files.
+fn make_cldr_zip(locales: &[&str], files: &[(&str, &str)]) -> Vec<u8> {
     let mut buf = Vec::<u8>::new();
     {
         let mut writer = ZipWriter::new(Cursor::new(&mut buf));
         let opts = SimpleFileOptions::default();
         for loc in locales {
             writer
-                .add_directory(format!("cldr-misc-full/main/{loc}/"), opts)
+                .start_file(format!("cldr-misc-full/main/{loc}/characters.json"), opts)
                 .unwrap();
+            writer.write_all(b"{}").unwrap();
+        }
+        for (path, contents) in SUPPLEMENTAL.iter().chain(files) {
+            writer.start_file(*path, opts).unwrap();
+            writer.write_all(contents.as_bytes()).unwrap();
         }
         writer.finish().unwrap();
     }
     buf
 }
 
-fn run_locales(zip: Vec<u8>, asset: &str, out: &Path) {
-    generate_locales::run(zip, asset, out.to_str().unwrap()).unwrap();
-}
-
-#[test]
-fn generate_locales_emits_enum_with_fallbacks_and_region_codes() {
-    let zip = make_minimal_cldr_zip(&["en", "en-GB", "de", "zh-Hans"]);
+/// Writes an emitted file, checks that it is valid Rust and returns it with
+/// all spaces removed, since rustfmt has not normalized them yet.
+fn render(file: emit::RustFile) -> String {
     let dir = TempDir::new().unwrap();
-    let out = dir.path().join("locale.rs");
-    run_locales(zip, "cldr-48.0.0-json-full.zip", &out);
-
-    let contents = fs::read_to_string(&out).unwrap();
-
-    // Enum and variants
-    assert!(contents.contains("pub enum Locale"));
-    assert!(contents.contains("    en,\n"));
-    assert!(contents.contains("    en_GB,\n"));
-    assert!(contents.contains("    de,\n"));
-    assert!(contents.contains("    zh_Hans,\n"));
-
-    // Fallback chain: child locale → parent
-    assert!(contents.contains("Locale::en_GB => Some(Locale::en)"));
-    // `zh` is not in the input, so `zh-Hans` falls back to None.
-    assert!(!contents.contains("Locale::zh_Hans => Some(Locale::zh)"));
-    assert!(contents.contains("Locale::zh_Hans => None"));
-    // Top-level locale also has no fallback.
-    assert!(contents.contains("Locale::en => None"));
-
-    // Region code extraction
-    assert!(contents.contains("Locale::en_GB => Some(\"GB\")"));
-    assert!(contents.contains("Locale::en => None"));
-
-    // Language code
-    assert!(contents.contains("Locale::en_GB => \"en\""));
-    assert!(contents.contains("Locale::zh_Hans => \"zh\""));
-
-    // Source asset constant is wired through
-    assert!(contents.contains("SOURCE_ASSET: &str = \"cldr-48.0.0-json-full.zip\""));
-
-    // AVAILABLE_LOCALES length matches input
-    assert!(contents.contains("AVAILABLE_LOCALES: [&str; 4]"));
+    let path = file.write(&dir.path().join("out.rs")).unwrap();
+    let text = fs::read_to_string(path).unwrap();
+    syn::parse_file(&text).unwrap_or_else(|e| panic!("invalid Rust ({e}):\n{text}"));
+    text.replace(' ', "")
 }
 
 #[test]
-fn generate_locales_sanitises_keyword_locales() {
+fn cldr_model_discovers_locales_and_parents() {
+    let zip = make_cldr_zip(&["en", "en-001", "en-GB", "en-IN", "de", "zh-Hans"], &[]);
+    let cldr = Cldr::from_zip(zip).unwrap();
+
+    let names: Vec<&str> = cldr.locales.iter().map(|l| l.name.as_str()).collect();
+    assert_eq!(names, ["de", "en", "en-001", "en-GB", "en-IN", "zh-Hans"]);
+
+    let parent = |name: &str| {
+        let l = cldr.locales.iter().find(|l| l.name == name).unwrap();
+        l.parent.map(|p| cldr.locales[p].name.as_str())
+    };
+    assert_eq!(parent("en-GB"), Some("en"));
+    assert_eq!(parent("en-IN"), Some("en-001"));
+    assert_eq!(parent("en-001"), Some("en"));
+    // `zh` is not in the archive, and zh-Hans has no other ancestor.
+    assert_eq!(parent("zh-Hans"), None);
+    assert_eq!(parent("en"), None);
+}
+
+#[test]
+fn cldr_model_uses_defaults_when_data_missing() {
+    let cldr = Cldr::from_zip(make_cldr_zip(&["en", "de-AT"], &[])).unwrap();
+    let en = &cldr.locales[1];
+    assert_eq!(en.numbers, crate::cldr::NumberData::default());
+    assert_eq!(en.dates, crate::cldr::DateData::default());
+    assert_eq!(en.currency_pattern, "¤#,##0.00");
+    assert_eq!(en.default_currency, "USD");
+    // de-AT has its own region, whose tender is EUR.
+    assert_eq!(cldr.locales[0].default_currency, "EUR");
+    assert_eq!(cldr.fraction_digits.get("JPY"), Some(&0));
+    assert!(!cldr.fraction_digits.contains_key("DEFAULT"));
+}
+
+#[test]
+fn cldr_model_rejects_empty_archives() {
+    assert!(Cldr::from_zip(make_cldr_zip(&[], &[])).is_err());
+    assert!(Cldr::from_zip(b"not a zip".to_vec()).is_err());
+}
+
+#[test]
+fn emit_locales_writes_enum_map_and_parents() {
+    let zip = make_cldr_zip(&["en", "en-GB", "as"], &[]);
+    let cldr = Cldr::from_zip(zip).unwrap();
+    let text = render(emit::locales::emit(&cldr, "48.0.0").unwrap());
+
+    assert!(text.contains("pubconstCLDR_VERSION:&str=\"48.0.0\";"));
+    assert!(text.contains("AVAILABLE_LOCALES:[&str;3]"));
+    assert!(text.contains("pubenumLocale"));
     // "as" (Assamese) is a Rust keyword and must get a trailing underscore.
-    let zip = make_minimal_cldr_zip(&["as"]);
-    let dir = TempDir::new().unwrap();
-    let out = dir.path().join("locale.rs");
-    run_locales(zip, "cldr-x-json-full.zip", &out);
-
-    let contents = fs::read_to_string(&out).unwrap();
-    assert!(contents.contains("    as_,\n"));
-    assert!(contents.contains("Locale::as_ => \"as\""));
-    assert!(contents.contains("\"as\" => Ok(Locale::as_)"));
+    assert!(text.contains("as_,"));
+    assert!(text.contains("en_GB,"));
+    assert!(text.contains("Locale::as_"));
+    // One parent row per locale, commented with the locale.
+    assert!(text.contains("None,//en\n"));
+    assert!(text.contains("Some(Locale::en),//en-GB\n"));
 }
 
 #[test]
-fn generate_num_formats_falls_back_to_defaults_when_data_missing() {
-    // No numbers.json shipped → every locale should land on the default
-    // separators / minus / grouping sizes.
-    let zip = make_minimal_cldr_zip(&["en", "de"]);
-    let dir = TempDir::new().unwrap();
-    let out = dir.path().join("num_formats.rs");
-    generate_num_formats::run(zip, "ignored", out.to_str().unwrap()).unwrap();
+fn emit_numbers_reads_symbols_digits_and_grouping() {
+    let numbers = r###"{"main":{"ar":{"numbers":{
+        "defaultNumberingSystem":"arab",
+        "symbols-numberSystem-arab":{"decimal":"٫","group":"٬","minusSign":"؜-"},
+        "decimalFormats-numberSystem-arab":{"standard":"#,##,##0.###"},
+        "currencyFormats-numberSystem-arab":{"standard":"#,##0.00 ¤;-#,##0.00 ¤"}}}}}"###;
+    let zip = make_cldr_zip(
+        &["ar", "en"],
+        &[("cldr-numbers-full/main/ar/numbers.json", numbers)],
+    );
+    let cldr = Cldr::from_zip(zip).unwrap();
 
-    let contents = fs::read_to_string(&out).unwrap();
-    assert!(contents.contains("pub fn decimal_separator"));
-    assert!(contents.contains("pub fn grouping_separator"));
-    assert!(contents.contains("pub fn minus_sign"));
-    assert!(contents.contains("Locale::en => \".\""));
-    assert!(contents.contains("Locale::de => \".\""));
-    assert!(contents.contains("Locale::en => \"-\""));
-    // Default grouping size is [3]
-    assert!(contents.contains("Locale::en => &[3]"));
-    // No numeric system override means digits() returns None.
-    assert!(contents.contains("Locale::en => None"));
+    let ar = &cldr.locales[0];
+    assert_eq!(ar.numbers.decimal, "٫");
+    assert_eq!(ar.numbers.digits.map(|d| d[1]), Some('١'));
+    assert_eq!(ar.currency_pattern, "#,##0.00 ¤;-#,##0.00 ¤");
+
+    let text = render(emit::numbers::emit(&cldr, "48.0.0").unwrap());
+    assert!(text.contains("primary:3"));
+    assert!(text.contains("secondary:2"));
+    assert!(text.contains("'٠'"));
+    // Identical symbol sets are emitted once: en shares nothing with ar.
+    assert_eq!(text.matches("=NumberSymbols{").count(), 2);
+    assert!(text.contains("NUMBER_SYMBOLS:[&NumberSymbols;2]"));
 }
 
 #[test]
-fn generate_datetime_formatting_falls_back_to_defaults_when_data_missing() {
-    let zip = make_minimal_cldr_zip(&["en"]);
-    let dir = TempDir::new().unwrap();
-    let out = dir.path().join("datetime_formats.rs");
-    generate_datetime_formatting::run(zip, "ignored", out.to_str().unwrap()).unwrap();
+fn emit_dates_pre_parses_patterns() {
+    let gregorian = r#"{"main":{"en":{"dates":{"calendars":{"gregorian":{
+        "months":{"format":{"wide":{"1":"January"},"abbreviated":{"1":"Jan"}}},
+        "days":{"format":{"wide":{"sun":"Sunday"}}},
+        "dayPeriods":{"format":{"wide":{"am":"AM","pm":"PM"}}},
+        "dateFormats":{"medium":"MMM d, y"},
+        "timeFormats":{"medium":"h:mm:ss a"}}}}}}}"#;
+    let zip = make_cldr_zip(
+        &["en", "de"],
+        &[("cldr-dates-full/main/en/ca-gregorian.json", gregorian)],
+    );
+    let cldr = Cldr::from_zip(zip).unwrap();
+    // de has no calendar data and gets the defaults.
+    assert_eq!(cldr.locales[0].dates.date_pattern, "y-MM-dd");
 
-    let contents = fs::read_to_string(&out).unwrap();
-    // Default fallback strings are hard-coded in the generator.
-    assert!(contents.contains("Locale::en => \"y-MM-dd\""));
-    assert!(contents.contains("Locale::en => \"HH:mm:ss\""));
-    assert!(contents.contains("Locale::en => (\"AM\", \"PM\")"));
-    assert!(contents.contains("pub fn format_date"));
-    assert!(contents.contains("pub fn format_time"));
+    let text = render(emit::dates::emit(&cldr, "48.0.0").unwrap());
+    assert!(text.contains("DatePart::Month(3)"));
+    assert!(text.contains("DatePart::Literal(\",\")"));
+    assert!(text.contains("DatePart::Hour12(1)"));
+    assert!(text.contains("DatePart::DayPeriod"));
+    assert!(text.contains("source:\"MMMd,y\""));
 }
 
 #[test]
-fn generate_currency_formatting_uses_defaults_when_data_missing() {
-    let zip = make_minimal_cldr_zip(&["en"]);
-    let dir = TempDir::new().unwrap();
-    let out = dir.path().join("currency_formats.rs");
-    generate_currency_formatting::run(zip, "ignored", out.to_str().unwrap()).unwrap();
+fn emit_currency_stores_only_symbol_overrides() {
+    let currencies = |loc: &str, eur: &str| {
+        format!(
+            r#"{{"main":{{"{loc}":{{"numbers":{{"currencies":{{
+                "EUR":{{"symbol":"{eur}"}},"USD":{{"symbol":"US$"}},"JPY":{{}}}}}}}}}}}}"#
+        )
+    };
+    let de = currencies("de", "€");
+    let de_at = currencies("de-AT", "€");
+    let en = currencies("en", "€");
+    let zip = make_cldr_zip(
+        &["de", "de-AT", "en"],
+        &[
+            ("cldr-numbers-full/main/de/currencies.json", &de),
+            ("cldr-numbers-full/main/de-AT/currencies.json", &de_at),
+            ("cldr-numbers-full/main/en/currencies.json", &en),
+        ],
+    );
+    let cldr = Cldr::from_zip(zip).unwrap();
 
-    let contents = fs::read_to_string(&out).unwrap();
-    // No likelySubtags / currencyData / currencies.json → falls back to USD / pattern default.
-    assert!(contents.contains("pub fn format_currency"));
-    assert!(contents.contains("pub fn currency_standard_pattern"));
-    assert!(contents.contains("pub fn default_currency_symbol"));
-    // Default symbol when no likelySubtags/currencies.json data is present.
-    assert!(contents.contains("Locale::en => \"USD\""));
-    // Default pattern is emitted via Debug formatting; ¤ is a printable Unicode
-    // character so it survives as-is. Just check both ends of the pattern.
-    assert!(contents.contains("\u{00a4}#,##0.00"));
-}
+    let overrides = emit::currency::symbol_overrides(&cldr);
+    // de-AT inherits everything from de; JPY without a symbol is its code.
+    assert!(overrides[1].is_empty());
+    assert_eq!(
+        overrides[0],
+        [
+            ("EUR".to_string(), "€".to_string()),
+            ("USD".to_string(), "US$".to_string())
+        ]
+    );
+    assert_eq!(
+        emit::currency::resolve_symbol(&cldr, &overrides, 1, "USD"),
+        "US$"
+    );
+    assert_eq!(
+        emit::currency::resolve_symbol(&cldr, &overrides, 1, "JPY"),
+        "JPY"
+    );
 
-#[test]
-fn generate_num_formats_with_real_numbering_systems_emits_digit_table() {
-    // Build a zip that *does* include numberingSystems.json plus a locale that
-    // points at a non-latn system, so the digits() arm should be populated.
-    let mut buf = Vec::<u8>::new();
-    {
-        let mut writer = ZipWriter::new(Cursor::new(&mut buf));
-        let opts = SimpleFileOptions::default();
-
-        writer
-            .add_directory("cldr-misc-full/main/ar/", opts)
-            .unwrap();
-
-        writer
-            .start_file("cldr-core/supplemental/numberingSystems.json", opts)
-            .unwrap();
-        // Regular raw string (not byte) — Arabic digits are non-ASCII so a
-        // `br"…"` literal would be rejected.
-        writer
-            .write_all(
-                r#"{
-                  "supplemental": {
-                    "numberingSystems": {
-                      "arab": { "_type": "numeric", "_digits": "٠١٢٣٤٥٦٧٨٩" }
-                    }
-                  }
-                }"#
-                .as_bytes(),
-            )
-            .unwrap();
-
-        writer
-            .start_file("cldr-numbers-full/main/ar/numbers.json", opts)
-            .unwrap();
-        // Use `br###"..."###` so the embedded `"#` and `"##` sequences in the
-        // pattern string don't terminate the raw byte string.
-        writer
-            .write_all(
-                r###"{
-                  "main": {
-                    "ar": {
-                      "numbers": {
-                        "defaultNumberingSystem": "arab",
-                        "symbols-numberSystem-arab": {
-                          "decimal": ",",
-                          "group": ".",
-                          "minusSign": "-"
-                        },
-                        "decimalFormats-numberSystem-arab": {
-                          "standard": "#,##,##0.###"
-                        }
-                      }
-                    }
-                  }
-                }"###
-                    .as_bytes(),
-            )
-            .unwrap();
-
-        writer.finish().unwrap();
-    }
-
-    let dir = TempDir::new().unwrap();
-    let out = dir.path().join("num_formats.rs");
-    generate_num_formats::run(buf, "ignored", out.to_str().unwrap()).unwrap();
-
-    let contents = fs::read_to_string(&out).unwrap();
-    // Symbols from the JSON
-    assert!(contents.contains("Locale::ar => \",\""));
-    assert!(contents.contains("Locale::ar => \".\""));
-    // Indian-style grouping pattern → [3, 2]
-    assert!(contents.contains("Locale::ar => &[3, 2]"));
-    // Digit table is emitted as a `Some([...])` array. We just check the marker.
-    assert!(contents.contains("Locale::ar => Some(["));
+    let text = render(emit::currency::emit(&cldr, "48.0.0").unwrap());
+    assert!(text.contains("Currency(*b\"EUR\")"));
+    assert!(text.contains("FRACTION_DIGITS:[(Currency,u8);1]"));
+    assert!(text.contains("&[],//de-AT"));
 }
 
 // ---------------------------------------------------------------------------
@@ -576,6 +581,8 @@ fn readme_facts() -> readme::Facts {
 fn readme_version_req_matches_cargo_compatibility() {
     assert_eq!(readme::version_req("0.3.1"), "0.3");
     assert_eq!(readme::version_req("1.2.0"), "1");
+    // A pre-release is only matched by a requirement naming it.
+    assert_eq!(readme::version_req("0.4.0-rc.1"), "0.4.0-rc.1");
 }
 
 #[test]
@@ -635,7 +642,6 @@ nums = []
 strum = ["dep:strum", "dep:strum_macros"]
 currency = ["nums"]
 datetime = []
-rebuild = []
 all = ["datetime", "nums"]
 "#
     .parse()
@@ -646,7 +652,7 @@ all = ["datetime", "nums"]
     assert!(lines[2].starts_with("| `nums` | - |"));
     assert!(lines[3].starts_with("| `strum` | `strum` crate, `strum_macros` crate |"));
     assert!(lines[4].starts_with("| `currency` | `nums` |"));
-    assert!(lines[7].starts_with("| `all` | `datetime`, `nums` |"));
+    assert!(lines[6].starts_with("| `all` | `datetime`, `nums` |"));
 }
 
 #[test]
@@ -672,15 +678,15 @@ fn readme_sync_checks_and_writes_workspace() {
         "[workspace]\n[workspace.metadata.cldr]\nversion = \"48.2.2\"\n",
     )
     .unwrap();
-    fs::create_dir_all(root.join("locale-rs/src")).unwrap();
+    fs::create_dir_all(root.join("locale-rs/src/data")).unwrap();
     fs::create_dir_all(root.join("locale-dev")).unwrap();
     fs::write(
         root.join("locale-rs/Cargo.toml"),
-        "[package]\nversion = \"0.3.1\"\n[features]\nrebuild = []\nstrum = []\ndatetime = []\nnums = []\ncurrency = []\nall = []\n",
+        "[package]\nversion = \"0.3.1\"\n[features]\nstrum = []\ndatetime = []\nnums = []\ncurrency = []\nall = []\n",
     )
     .unwrap();
     fs::write(
-        root.join("locale-rs/src/locale.rs"),
+        root.join("locale-rs/src/data/locales.rs"),
         "pub const AVAILABLE_LOCALES: [&str; 2] = [\"en\", \"de\"];",
     )
     .unwrap();
