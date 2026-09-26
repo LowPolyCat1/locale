@@ -7,20 +7,23 @@ on:
     branches: [master]
 
 jobs:
-  # Only pull requests are filtered; pushes to master always run everything.
+  # Pull requests are compared against their base, pushes against the previous commit.
   # The gate is job-level (not `on.pull_request.paths`) so that skipped required
   # checks are still reported as successful. If the filter itself fails, `run` is
   # empty and everything runs.
   changes:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: read
     outputs:
-      run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+      run: ${{ steps.filter.outputs.run }}
     steps:
+      # Pull requests are diffed through the API; pushes need the git history.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'push'
       - uses: dorny/paths-filter@v3
         id: filter
-        if: github.event_name == 'pull_request'
         with:
           filters: |
             run:

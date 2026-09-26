@@ -10,20 +10,23 @@ env:
     CARGO_TERM_COLOR: always
 
 jobs:
-    # Only pull requests are filtered; pushes to master always run everything.
+    # Pull requests are compared against their base, pushes against the previous commit.
     # The gate is job-level (not `on.pull_request.paths`) so that skipped required
     # checks are still reported as successful. If the filter itself fails, `run` is
     # empty and everything runs.
     changes:
         runs-on: ubuntu-latest
         permissions:
+            contents: read
             pull-requests: read
         outputs:
-            run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+            run: ${{ steps.filter.outputs.run }}
         steps:
+            # Pull requests are diffed through the API; pushes need the git history.
+            - uses: actions/checkout@v7
+              if: github.event_name == 'push'
             - uses: dorny/paths-filter@v3
               id: filter
-              if: github.event_name == 'pull_request'
               with:
                   filters: |
                       run:
@@ -35,10 +38,11 @@ jobs:
     build:
         # Matrix jobs can't be skipped with a job-level `if`: GitHub then reports a single
         # unexpanded check instead of one per matrix entry, so the required per-entry checks
-        # would never be reported. The steps are skipped instead, and only the stable
-        # entries (the required checks) are started.
+        # would never be reported. On pull requests the steps are skipped instead, and only
+        # the stable entries (the required checks) are started. Pushes have no required
+        # checks, so there the whole job is skipped.
         needs: changes
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.changes.outputs.run != 'false') }}
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
