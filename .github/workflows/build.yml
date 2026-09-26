@@ -36,34 +36,43 @@ jobs:
                           - '.github/workflows/build.yml'
 
     build:
-        # Matrix jobs can't be skipped with a job-level `if`: GitHub then reports a single
-        # unexpanded check instead of one per matrix entry, so the required per-entry checks
-        # would never be reported. On pull requests the steps are skipped instead, and only
-        # the stable entries (the required checks) are started. Pushes have no required
-        # checks, so there the whole job is skipped.
         needs: changes
-        if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.changes.outputs.run != 'false') }}
+        if: ${{ !cancelled() && needs.changes.outputs.run != 'false' }}
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
                 os: [ubuntu-latest, windows-latest, macos-latest]
-                toolchain: ${{ fromJSON(needs.changes.outputs.run != 'false' && '["stable", "beta", "nightly"]' || '["stable"]') }}
+                toolchain: [stable, beta, nightly]
 
         permissions:
             contents: read
 
         steps:
-            - if: needs.changes.outputs.run != 'false'
-              uses: actions/checkout@v7
-            - if: needs.changes.outputs.run != 'false'
-              name: Set up Rust
+            - uses: actions/checkout@v7
+            - name: Set up Rust
               run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-            - if: needs.changes.outputs.run != 'false'
-              name: Build
+            - name: Build
               run: cargo build --verbose
-            - if: needs.changes.outputs.run != 'false'
-              name: Run tests
+            - name: Run tests
               run: cargo test --verbose
-            - if: needs.changes.outputs.run != 'false'
-              name: Build release
+            - name: Build release
               run: cargo build --verbose --release
+
+    # The check to require in the ruleset. A skipped matrix job reports a single
+    # unexpanded check instead of one per entry, so the per-entry `build (<os>, stable)`
+    # checks can't be required once the matrix may be skipped. This job passes when
+    # the build succeeded, or was skipped because nothing relevant changed (not
+    # because the run was cancelled).
+    build-ok:
+        needs: [changes, build]
+        if: always()
+        runs-on: ubuntu-latest
+        permissions: {}
+        steps:
+            - name: Check build result
+              env:
+                  RESULT: ${{ needs.build.result }}
+                  RUN: ${{ needs.changes.outputs.run }}
+              run: |
+                  echo "build: $RESULT, relevant changes: ${RUN:-unknown}"
+                  [ "$RESULT" = success ] || { [ "$RESULT" = skipped ] && [ "$RUN" = false ]; }
