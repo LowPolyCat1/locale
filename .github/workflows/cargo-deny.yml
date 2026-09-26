@@ -1,0 +1,26 @@
+name: Cargo Deny
+
+on:
+    push:
+        branches: [main, master]
+    pull_request:
+        branches: [main, master]
+
+jobs:
+    cargo_deny:
+        name: cargo-deny (${{ matrix.checks }})
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        strategy:
+            fail-fast: false
+            matrix:
+                checks:
+                    - licenses
+                    - advisories
+        steps:
+            - uses: actions/checkout@v7
+            - name: Run cargo-deny
+              uses: EmbarkStudios/cargo-deny-action@v2
+              with:
+                  command: check ${{ matrix.checks }}

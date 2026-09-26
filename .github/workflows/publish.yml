@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to publish (e.g. v0.3.1)
+        required: true
+        type: string
   workflow_dispatch:
 
 jobs:
@@ -13,7 +19,9 @@ jobs:
       contents: read
       actions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -21,10 +29,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Verify tag matches locale-rs version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: inputs.tag != '' || startsWith(github.ref, 'refs/tags/v')
         shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="${GITHUB_REF#refs/tags/v}"
+          tag="${TAG#v}"
           crate=$(awk -F'"' '/^\[package\]/{f=1;next} f && /^version[[:space:]]*=/{print $2; exit}' locale-rs/Cargo.toml)
           if [ "$tag" != "$crate" ]; then
             echo "Tag v$tag does not match locale-rs/Cargo.toml version $crate" >&2
