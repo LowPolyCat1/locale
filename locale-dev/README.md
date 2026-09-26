@@ -24,12 +24,14 @@ Only data is generated. All formatting logic in `locale-rs` is handwritten Rust 
 
 ```bash
 # Update to the latest CLDR release, if it is newer than the recorded one:
-# downloads into ./cache, regenerates the data, bumps the locale-rs version,
-# records the new CLDR version and syncs the READMEs.
+# downloads into ./cache, regenerates the data, makes a breaking version bump
+# if the data changed, records the new CLDR version, writes the pull request
+# description to target/cldr-bump-pr.md and syncs the READMEs.
 cargo run -p locale-dev
 
 # Regenerate from a local cldr-json archive. Versions stay untouched, which is
-# what you want after changing the generator itself, or when offline.
+# what you want after changing the generator itself, or when offline. If the
+# output changed, a warning says the next release must be breaking.
 cargo run -p locale-dev -- --archive cache/cldr-48.2.2-json-full.zip
 
 # Sync or check the generated README sections.
@@ -38,6 +40,15 @@ cargo run -p locale-dev -- readme --check
 ```
 
 A local archive needs the layout of the `cldr-json` release assets: `cldr-core/`, `cldr-numbers-full/` and `cldr-dates-full/` at the top level.
+
+## Release Policy
+
+Every change to the generated data is a breaking release (`0.4.2` -> `0.5.0`, `1.2.3` -> `2.0.0`, `0.5.0-rc.1` -> `0.5.0-rc.2`). `policy.rs` compares the generated files before and after a regeneration:
+
+- **Added or removed locales** change the exhaustive `Locale` enum, so downstream `match`es stop compiling. They are listed in the log and the pull request.
+- **Changed symbols, patterns or `CLDR_VERSION`** compile fine but change output, which downstream tests and users may rely on.
+
+Either way, downstream code only sees the change after an explicit upgrade, never through a plain `cargo update`, and the compiler points at every exhaustive `match` to revisit. Since `CLDR_VERSION` is part of the generated data, every CLDR update is a breaking release.
 
 ## Architecture
 
@@ -55,6 +66,7 @@ locale-dev/src/
 │   └── currency.rs      # -> data/currency.rs
 ├── format.rs            # rustfmt over the generated files
 ├── download_latest.rs   # GitHub API and download cache
+├── policy.rs            # Release policy: detects data changes
 ├── version.rs           # CLDR and crate version bookkeeping
 ├── readme.rs            # Generated README sections
 ├── error.rs             # `Error` type

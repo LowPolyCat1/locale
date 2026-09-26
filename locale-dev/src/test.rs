@@ -1,8 +1,9 @@
 use crate::cldr::Cldr;
+use crate::policy::{DataChange, Snapshot};
 use crate::sanitize_variant;
 use crate::version::{
-    BumpKind, CldrVersion, bump_locale_rs_version, classify_cldr_bump, parse_version_from_asset,
-    read_locale_rs_version, read_workspace_cldr_version, write_workspace_cldr_version,
+    Bump, bump_locale_rs_version, parse_version_from_asset, read_locale_rs_version,
+    read_workspace_cldr_version, write_workspace_cldr_version,
 };
 use crate::{emit, readme};
 
@@ -46,109 +47,6 @@ fn sanitize_keyword_check_runs_after_hyphen_replacement() {
 #[test]
 fn sanitize_handles_empty_input() {
     assert_eq!(sanitize_variant(""), "");
-}
-
-// ---------------------------------------------------------------------------
-// version::CldrVersion
-// ---------------------------------------------------------------------------
-
-#[test]
-fn cldr_version_parses_valid_input() {
-    let v = CldrVersion::parse("48.1.0").unwrap();
-    assert_eq!(v.major, 48);
-    assert_eq!(v.minor, 1);
-    assert_eq!(v.patch, 0);
-}
-
-#[test]
-fn cldr_version_rejects_invalid_input() {
-    assert!(CldrVersion::parse("48").is_none());
-    assert!(CldrVersion::parse("48.1").is_none());
-    assert!(CldrVersion::parse("48.1.0.0").is_none());
-    assert!(CldrVersion::parse("48.1.x").is_none());
-    assert!(CldrVersion::parse("").is_none());
-    assert!(CldrVersion::parse("a.b.c").is_none());
-}
-
-#[test]
-fn cldr_version_display_is_dotted() {
-    let v = CldrVersion {
-        major: 1,
-        minor: 2,
-        patch: 3,
-    };
-    assert_eq!(format!("{v}"), "1.2.3");
-}
-
-#[test]
-fn cldr_version_equality() {
-    let a = CldrVersion::parse("48.1.0").unwrap();
-    let b = CldrVersion::parse("48.1.0").unwrap();
-    let c = CldrVersion::parse("48.1.1").unwrap();
-    assert_eq!(a, b);
-    assert_ne!(a, c);
-}
-
-// ---------------------------------------------------------------------------
-// version::classify_cldr_bump
-// ---------------------------------------------------------------------------
-
-fn v(s: &str) -> CldrVersion {
-    CldrVersion::parse(s).unwrap()
-}
-
-#[test]
-fn classify_detects_major() {
-    assert_eq!(classify_cldr_bump(v("1.0.0"), v("2.0.0")), BumpKind::Major);
-}
-
-#[test]
-fn classify_major_takes_precedence() {
-    // When major differs, lower segments don't matter for classification.
-    assert_eq!(classify_cldr_bump(v("1.5.7"), v("2.0.0")), BumpKind::Major);
-    assert_eq!(classify_cldr_bump(v("1.0.0"), v("2.9.9")), BumpKind::Major);
-}
-
-#[test]
-fn classify_detects_minor() {
-    assert_eq!(
-        classify_cldr_bump(v("48.0.0"), v("48.1.0")),
-        BumpKind::Minor
-    );
-}
-
-#[test]
-fn classify_minor_takes_precedence_over_patch() {
-    assert_eq!(
-        classify_cldr_bump(v("48.0.0"), v("48.1.5")),
-        BumpKind::Minor
-    );
-}
-
-#[test]
-fn classify_detects_patch() {
-    assert_eq!(
-        classify_cldr_bump(v("48.1.0"), v("48.1.1")),
-        BumpKind::Patch
-    );
-}
-
-#[test]
-fn classify_detects_none_when_equal() {
-    assert_eq!(classify_cldr_bump(v("48.1.0"), v("48.1.0")), BumpKind::None);
-}
-
-#[test]
-fn classify_treats_downgrades_as_a_bump() {
-    // The function only checks for *difference*, not direction.
-    assert_eq!(
-        classify_cldr_bump(v("49.0.0"), v("48.0.0")),
-        BumpKind::Major
-    );
-    assert_eq!(
-        classify_cldr_bump(v("48.2.0"), v("48.1.0")),
-        BumpKind::Minor
-    );
 }
 
 // ---------------------------------------------------------------------------
@@ -277,70 +175,114 @@ fn bump_none_leaves_version_unchanged_and_does_not_rewrite() {
     let path = dir.path().join("locale-rs/Cargo.toml");
     let before = fs::read_to_string(&path).unwrap();
 
-    let (old, new) = bump_locale_rs_version(dir.path(), BumpKind::None).unwrap();
-    assert_eq!(old, "1.2.3");
-    assert_eq!(new, "1.2.3");
-
-    // On BumpKind::None the file should not be touched.
-    let after = fs::read_to_string(&path).unwrap();
-    assert_eq!(before, after);
+    let (old, new) = bump_locale_rs_version(dir.path(), Bump::None).unwrap();
+    assert_eq!((old.as_str(), new.as_str()), ("1.2.3", "1.2.3"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
 }
 
 #[test]
-fn bump_major_on_stable_resets_lower_components() {
+fn breaking_bump_on_stable_bumps_major() {
     let dir = workspace_with_locale_version("1.2.3");
-    let (old, new) = bump_locale_rs_version(dir.path(), BumpKind::Major).unwrap();
-    assert_eq!(old, "1.2.3");
-    assert_eq!(new, "2.0.0");
+    let (old, new) = bump_locale_rs_version(dir.path(), Bump::Breaking).unwrap();
+    assert_eq!((old.as_str(), new.as_str()), ("1.2.3", "2.0.0"));
     assert_eq!(read_locale_rs_version(dir.path()).unwrap(), "2.0.0");
 }
 
 #[test]
-fn bump_minor_on_stable_resets_patch() {
-    let dir = workspace_with_locale_version("1.2.3");
-    let (_, new) = bump_locale_rs_version(dir.path(), BumpKind::Minor).unwrap();
-    assert_eq!(new, "1.3.0");
-}
-
-#[test]
-fn bump_patch_on_stable_increments_patch() {
-    let dir = workspace_with_locale_version("1.2.3");
-    let (_, new) = bump_locale_rs_version(dir.path(), BumpKind::Patch).unwrap();
-    assert_eq!(new, "1.2.4");
-}
-
-#[test]
-fn bump_major_on_zerover_promotes_minor() {
-    // 0.x.y semver convention: "breaking" still keeps major at 0 and bumps minor.
+fn breaking_bump_on_zerover_bumps_minor() {
+    // Cargo treats 0.x -> 0.(x+1) as the breaking step.
     let dir = workspace_with_locale_version("0.2.3");
-    let (_, new) = bump_locale_rs_version(dir.path(), BumpKind::Major).unwrap();
+    let (_, new) = bump_locale_rs_version(dir.path(), Bump::Breaking).unwrap();
     assert_eq!(new, "0.3.0");
 }
 
 #[test]
-fn bump_minor_on_zerover_also_promotes_minor() {
-    let dir = workspace_with_locale_version("0.2.3");
-    let (_, new) = bump_locale_rs_version(dir.path(), BumpKind::Minor).unwrap();
-    assert_eq!(new, "0.3.0");
+fn breaking_bump_on_pre_release_counts_up() {
+    let dir = workspace_with_locale_version("0.4.0-rc.1");
+    let (_, new) = bump_locale_rs_version(dir.path(), Bump::Breaking).unwrap();
+    assert_eq!(new, "0.4.0-rc.2");
 }
 
 #[test]
-fn bump_patch_on_zerover_increments_patch() {
-    let dir = workspace_with_locale_version("0.2.3");
-    let (_, new) = bump_locale_rs_version(dir.path(), BumpKind::Patch).unwrap();
-    assert_eq!(new, "0.2.4");
+fn bump_fails_on_malformed_versions() {
+    for version in ["1.2", "1.2.beta", "1.2.3-rc"] {
+        let dir = workspace_with_locale_version(version);
+        assert!(
+            bump_locale_rs_version(dir.path(), Bump::Breaking).is_err(),
+            "{version}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// policy: every data change is breaking
+// ---------------------------------------------------------------------------
+
+fn locales_rs(ids: &[&str]) -> String {
+    let list: Vec<String> = ids.iter().map(|id| format!("    \"{id}\",")).collect();
+    format!(
+        "pub const CLDR_VERSION: &str = \"48.0.0\";\npub const AVAILABLE_LOCALES: [&str; {}] = [\n{}\n];\n",
+        ids.len(),
+        list.join("\n")
+    )
 }
 
 #[test]
-fn bump_fails_when_version_is_not_three_parts() {
-    let dir = workspace_with_locale_version("1.2");
-    assert!(bump_locale_rs_version(dir.path(), BumpKind::Patch).is_err());
+fn policy_reads_locales_from_generated_file() {
+    let snapshot = Snapshot::from_files(&[("locales.rs", &locales_rs(&["de", "en", "en-GB"]))]);
+    let locales: Vec<String> = snapshot.locales().into_iter().collect();
+    assert_eq!(locales, ["de", "en", "en-GB"]);
+    assert!(Snapshot::default().locales().is_empty());
 }
 
 #[test]
-fn bump_fails_when_version_has_non_numeric_component() {
-    let dir = workspace_with_locale_version("1.2.beta");
-    assert!(bump_locale_rs_version(dir.path(), BumpKind::Patch).is_err());
+fn policy_unchanged_data_needs_no_release() {
+    let files = locales_rs(&["de", "en"]);
+    let snapshot = Snapshot::from_files(&[("locales.rs", &files), ("numbers.rs", "x")]);
+    let change = DataChange::between(&snapshot, &snapshot.clone());
+    assert_eq!(change, DataChange::default());
+    assert_eq!(change.bump(), Bump::None);
+    assert!(change.summary().contains("unchanged"));
+}
+
+#[test]
+fn policy_added_and_removed_locales_are_breaking() {
+    let old = Snapshot::from_files(&[("locales.rs", &locales_rs(&["de", "en", "xx"]))]);
+    let new = Snapshot::from_files(&[("locales.rs", &locales_rs(&["de", "en", "yy", "zz"]))]);
+    let change = DataChange::between(&old, &new);
+    assert_eq!(change.bump(), Bump::Breaking);
+    assert_eq!(change.changed_files, ["locales.rs"]);
+    assert_eq!(change.added_locales, ["yy", "zz"]);
+    assert_eq!(change.removed_locales, ["xx"]);
+    let summary = change.summary();
+    assert!(
+        summary.contains("Added locales (2): `yy`, `zz`"),
+        "{summary}"
+    );
+    assert!(summary.contains("Removed locales (1): `xx`"), "{summary}");
+}
+
+#[test]
+fn policy_output_only_changes_are_breaking_too() {
+    // Same locales, different symbols: no compile error downstream, but the
+    // output changes, so it still needs a breaking release.
+    let locales = locales_rs(&["de", "en"]);
+    let old = Snapshot::from_files(&[("locales.rs", &locales), ("numbers.rs", "group: \".\"")]);
+    let new = Snapshot::from_files(&[("locales.rs", &locales), ("numbers.rs", "group: \" \"")]);
+    let change = DataChange::between(&old, &new);
+    assert_eq!(change.bump(), Bump::Breaking);
+    assert_eq!(change.changed_files, ["numbers.rs"]);
+    assert!(change.added_locales.is_empty() && change.removed_locales.is_empty());
+    assert!(change.summary().contains("set of locales is unchanged"));
+}
+
+#[test]
+fn policy_reads_the_real_data_directory() {
+    let data = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../locale-rs/src/data");
+    let snapshot = Snapshot::read(&data).unwrap();
+    let declared = readme::count_locales(&fs::read_to_string(data.join("locales.rs")).unwrap());
+    assert_eq!(snapshot.locales().len(), declared.unwrap());
+    assert!(snapshot.locales().contains("en-GB"));
 }
 
 // ---------------------------------------------------------------------------

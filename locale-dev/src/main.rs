@@ -1,5 +1,6 @@
 use locale_dev::cldr::Cldr;
 use locale_dev::error::{Error, Result};
+use locale_dev::policy::{DataChange, Snapshot};
 use locale_dev::*;
 use std::path::{Path, PathBuf};
 
@@ -34,8 +35,13 @@ fn data_dir(workspace_root: &Path) -> PathBuf {
     workspace_root.join("locale-rs/src/data")
 }
 
+/// Where `update_from_upstream` writes the pull request description.
+const PR_BODY: &str = "target/cldr-bump-pr.md";
+
 /// Downloads the latest CLDR release if it is newer than the recorded one,
-/// regenerates the data, bumps the crate version and syncs the READMEs.
+/// regenerates the data, applies the release policy (any data change is a
+/// breaking release, see `policy`), writes a pull request description to
+/// `target/cldr-bump-pr.md` and syncs the READMEs.
 fn update_from_upstream(workspace_root: &Path) -> Result<()> {
     let current_cldr = version::read_workspace_cldr_version(workspace_root)?;
     match &current_cldr {
@@ -53,37 +59,47 @@ fn update_from_upstream(workspace_root: &Path) -> Result<()> {
     };
     let new_cldr = asset.version;
 
+    let data_dir = data_dir(workspace_root);
+    let before = Snapshot::read(&data_dir)?;
     let cldr = Cldr::from_zip(asset.buffer)?;
-    generate(&cldr, &new_cldr, &data_dir(workspace_root))?;
+    generate(&cldr, &new_cldr, &data_dir)?;
+    let change = DataChange::between(&before, &Snapshot::read(&data_dir)?);
+    log_change(&change);
 
-    let bump = match current_cldr
-        .as_deref()
-        .and_then(version::CldrVersion::parse)
-    {
-        Some(old) => {
-            let new = version::CldrVersion::parse(&new_cldr).ok_or_else(|| {
-                Error::Version(format!("cannot parse new CLDR version `{new_cldr}`"))
-            })?;
-            version::classify_cldr_bump(old, new)
-        }
-        None => version::BumpKind::Patch,
-    };
-
-    let (old_crate, new_crate) = version::bump_locale_rs_version(workspace_root, bump)?;
+    let (old_crate, new_crate) = version::bump_locale_rs_version(workspace_root, change.bump())?;
     if old_crate == new_crate {
         tracing::info!("locale-rs version unchanged ({old_crate}).");
     } else {
-        tracing::info!("Bumped locale-rs: {old_crate} -> {new_crate}");
+        tracing::info!("Breaking release: locale-rs {old_crate} -> {new_crate}");
     }
 
     version::write_workspace_cldr_version(workspace_root, &new_cldr)?;
     tracing::info!("workspace.metadata.cldr.version -> {new_cldr}");
 
+    let old_cldr = current_cldr.as_deref().unwrap_or("none");
+    let body = format!(
+        "Automated regeneration from upstream CLDR `{new_cldr}` (was `{old_cldr}`).\n\n\
+         - `locale-rs` -> `{new_crate}` (was `{old_crate}`)\n\
+         {summary}\n\
+         Every change to the generated data is released as a breaking change, so \
+         downstream code only sees it after an explicit upgrade. Added or removed \
+         locales change the exhaustive `Locale` enum.\n",
+        summary = change.summary(),
+    );
+    let body_path = workspace_root.join(PR_BODY);
+    if let Some(parent) = body_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&body_path, body)?;
+    tracing::info!("Pull request description written to {PR_BODY}");
+
     sync_readmes(workspace_root)
 }
 
 /// Regenerates the data from a local archive without touching any version.
-/// Useful offline and after changing the generator itself.
+/// Useful offline and after changing the generator itself. If the output
+/// changes, the next release must be a breaking one; that is reported, not
+/// applied, since the version is up to whoever releases.
 fn regenerate_from_archive(workspace_root: &Path, archive: &Path) -> Result<()> {
     let cldr_version = version::read_workspace_cldr_version(workspace_root)?.ok_or_else(|| {
         Error::Version("`--archive` needs `[workspace.metadata.cldr] version` in Cargo.toml".into())
@@ -92,9 +108,24 @@ fn regenerate_from_archive(workspace_root: &Path, archive: &Path) -> Result<()> 
         "Regenerating from {} as CLDR {cldr_version}",
         archive.display()
     );
+    let data_dir = data_dir(workspace_root);
+    let before = Snapshot::read(&data_dir)?;
     let cldr = Cldr::from_zip(std::fs::read(archive)?)?;
-    generate(&cldr, &cldr_version, &data_dir(workspace_root))?;
+    generate(&cldr, &cldr_version, &data_dir)?;
+    let change = DataChange::between(&before, &Snapshot::read(&data_dir)?);
+    log_change(&change);
+    if change.bump() == version::Bump::Breaking {
+        tracing::warn!(
+            "The generated data changed: the next locale-rs release must be a breaking one."
+        );
+    }
     sync_readmes(workspace_root)
+}
+
+fn log_change(change: &DataChange) {
+    for line in change.summary().lines() {
+        tracing::info!("{}", line.trim_start_matches("- "));
+    }
 }
 
 fn sync_readmes(workspace_root: &Path) -> Result<()> {

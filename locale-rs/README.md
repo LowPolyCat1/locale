@@ -191,7 +191,11 @@ match "invalid-locale".parse::<Locale>() {
 }
 ```
 
-`LocaleError` is `#[non_exhaustive]`; the formatting features add `InvalidCurrency` and `InvalidDateTime`.
+`LocaleError` has three variants: `UnknownLocale`, `InvalidCurrency` and `InvalidDateTime`.
+
+## Stability
+
+All public enums, `Locale` included, are exhaustive on purpose: when a release adds or removes a variant, every `match` that needs attention becomes a compile error. In exchange, every such change, and every CLDR data update that changes output, is released as a breaking version, so it never reaches you through a plain `cargo update`.
 
 ## Architecture
 

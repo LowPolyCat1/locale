@@ -22,7 +22,6 @@ pub(crate) mod currency;
 /// crore is written `1,00,00,000`. A primary size of 0 disables grouping.
 #[cfg(any(feature = "nums", feature = "datetime"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub struct Grouping {
     /// Size of the group closest to the decimal point.
     pub primary: u8,
@@ -37,7 +36,6 @@ pub struct Grouping {
 /// Number symbols of a locale in its default numbering system.
 #[cfg(any(feature = "nums", feature = "datetime"))]
 #[derive(Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub struct NumberSymbols {
     /// Decimal separator, e.g. `.` or `,`.
     pub decimal: &'static str,

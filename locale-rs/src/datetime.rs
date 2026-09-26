@@ -163,7 +163,6 @@ fn days_in_month(year: i32, month: u8) -> u8 {
 /// One element of a parsed CLDR date pattern. Widths are the number of
 /// repeated pattern letters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub enum DatePart {
     /// Literal text.
     Literal(&'static str),
@@ -190,7 +189,6 @@ pub enum DatePart {
 
 /// A date or time pattern with its parsed form.
 #[derive(Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub struct DatePattern {
     /// The CLDR pattern, e.g. `"MMM d, y"`.
     pub source: &'static str,
@@ -200,7 +198,6 @@ pub struct DatePattern {
 
 /// Gregorian calendar names and medium patterns of a locale.
 #[derive(Debug, PartialEq, Eq, Hash)]
-#[non_exhaustive]
 pub struct DateSymbols {
     /// Month names, January first.
     pub months_wide: &'static [&'static str; 12],

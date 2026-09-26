@@ -4,6 +4,7 @@ pub mod emit;
 pub mod error;
 pub mod format;
 pub mod patterns;
+pub mod policy;
 pub mod readme;
 pub mod version;
 
@@ -38,11 +39,12 @@ pub fn sanitize_variant(name: &str) -> String {
 /// The emitters run in parallel, as does rustfmt.
 pub fn generate(cldr: &Cldr, cldr_version: &str, data_dir: &Path) -> Result<Vec<PathBuf>> {
     type Emitter = fn(&Cldr, &str) -> Result<emit::RustFile>;
+    let [locales, numbers, dates, currency] = policy::GENERATED_FILES;
     let emitters: [(&str, Emitter); 4] = [
-        ("locales.rs", emit::locales::emit),
-        ("numbers.rs", emit::numbers::emit),
-        ("dates.rs", emit::dates::emit),
-        ("currency.rs", emit::currency::emit),
+        (locales, emit::locales::emit),
+        (numbers, emit::numbers::emit),
+        (dates, emit::dates::emit),
+        (currency, emit::currency::emit),
     ];
     let written = emitters
         .par_iter()
