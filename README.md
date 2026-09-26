@@ -9,8 +9,13 @@ A comprehensive, strongly-typed Rust library for managing Unicode locales, built
 [![Crates.io](https://img.shields.io/crates/v/locale-rs?style=for-the-badge&logo=rust&logoColor=white&color=1f4068)](https://crates.io/crates/locale-rs)
 [![Docs.rs](https://img.shields.io/docsrs/locale-rs?style=for-the-badge&logo=docs.rs&logoColor=white&color=1f4068)](https://docs.rs/locale-rs)
 
-[![CLDR](https://img.shields.io/badge/CLDR-48.1.0-162447?style=for-the-badge)](https://cldr.unicode.org/)
+<!-- gen:
+[![CLDR](https://img.shields.io/badge/CLDR-{{cldr_version}}-162447?style=for-the-badge)](https://cldr.unicode.org/)
 [![Crates.io License](https://img.shields.io/crates/l/locale-rs?style=for-the-badge&color=162447)](https://crates.io/crates/locale-rs)
+-->
+[![CLDR](https://img.shields.io/badge/CLDR-48.2.2-162447?style=for-the-badge)](https://cldr.unicode.org/)
+[![Crates.io License](https://img.shields.io/crates/l/locale-rs?style=for-the-badge&color=162447)](https://crates.io/crates/locale-rs)
+<!-- /gen -->
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/LowPolyCat1/locale/build.yml?style=for-the-badge&logo=github&label=Build&color=e43f5a)](https://github.com/LowPolyCat1/locale/actions)
 ![Tests Passing](https://img.shields.io/github/actions/workflow/status/LowPolyCat1/locale/build.yml?style=for-the-badge&label=tests&logo=github&color=e43f5a)
@@ -41,6 +46,17 @@ This workspace contains two crates:
 
 Add to your `Cargo.toml`:
 
+<!-- gen:
+```toml
+[dependencies]
+# Standard installation
+locale-rs = "{{crate_version_req}}"
+
+# Or opt into specific features
+locale-rs = { version = "{{crate_version_req}}", features = ["nums"] }
+locale-rs = { version = "{{crate_version_req}}", features = ["all"] }
+```
+-->
 ```toml
 [dependencies]
 # Standard installation
@@ -49,8 +65,23 @@ locale-rs = "0.3"
 # Or opt into specific features
 locale-rs = { version = "0.3", features = ["nums"] }
 locale-rs = { version = "0.3", features = ["all"] }
-
 ```
+<!-- /gen -->
+
+Available Cargo features (none are enabled by default):
+
+<!-- gen:
+{{feature_table}}
+-->
+| Feature | Enables | Description |
+| --- | --- | --- |
+| `rebuild` | - | Reserved for code regeneration; has no effect on the API. |
+| `strum` | `strum` crate, `strum_macros` crate | Derives `strum` traits on `Locale`, e.g. iterating over all locales. |
+| `datetime` | - | Localized month and weekday names and patterns (`datetime_formats`). |
+| `nums` | - | Locale-aware number formatting with native digits (`num_formats`). |
+| `currency` | `nums` | ICU-compatible currency formatting patterns (`currency_formats`). |
+| `all` | `datetime`, `nums`, `strum`, `currency` | Every feature above. |
+<!-- /gen -->
 
 Basic usage:
 
@@ -115,7 +146,7 @@ locale/
 
 | Feature | Description |
 | --- | --- |
-| **766 Unicode Locales** | Complete CLDR 48.1.0 coverage out of the box. |
+| **<!-- gen:{{locale_count}} -->766<!-- /gen --> Unicode Locales** | Complete CLDR <!-- gen:{{cldr_version}} -->48.2.2<!-- /gen --> coverage out of the box. |
 | **Type-Safe Locales** | Compile-time validated enum variants. |
 | **Number Formatting** | Locale-aware formatting using native digits. |
 | **Currency Formatting** | ICU-compatible currency patterns. |
