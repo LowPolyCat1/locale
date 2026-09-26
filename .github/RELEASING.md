@@ -35,7 +35,9 @@
 5. **`changelog.yml`** runs after a successful publish. It generates release notes
    from the merged PRs (categories in `.github/release.yml`: breaking, CLDR,
    dependencies, other), creates the GitHub release and opens an auto-merging PR
-   that adds the entry to `CHANGELOG.md`. PRs that need a major/breaking release
+   (branch `changelog/update`) that adds the entry to `CHANGELOG.md`. The branch
+   is rebuilt from `master` on every release and includes every version missing
+   from the file, so quick successive releases end up in one PR without conflicts. PRs that need a major/breaking release
    are labelled `breaking` by the semver check. It can also be run manually
    (Actions → Changelog → Run workflow) for an existing tag.
 
