@@ -7,8 +7,35 @@ on:
         branches: [main, master]
 
 jobs:
+    # Only pull requests are filtered; pushes to master always run everything.
+    # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+    # checks are still reported as successful. If the filter itself fails, `run` is
+    # empty and everything runs.
+    changes:
+        runs-on: ubuntu-latest
+        permissions:
+            pull-requests: read
+        outputs:
+            run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+        steps:
+            - uses: dorny/paths-filter@v3
+              id: filter
+              if: github.event_name == 'pull_request'
+              with:
+                  filters: |
+                      run:
+                          - '**/Cargo.toml'
+                          - 'Cargo.lock'
+                          - 'deny.toml'
+                          - '.github/workflows/cargo-deny.yml'
+
     cargo_deny:
         name: cargo-deny (${{ matrix.checks }})
+        # Matrix jobs can't be skipped with a job-level `if`: GitHub then reports a single
+        # unexpanded check instead of one per matrix entry, so the required per-entry checks
+        # would never be reported. The steps are skipped instead.
+        needs: changes
+        if: ${{ !cancelled() }}
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -19,8 +46,10 @@ jobs:
                     - licenses
                     - advisories
         steps:
-            - uses: actions/checkout@v7
-            - name: Run cargo-deny
+            - if: needs.changes.outputs.run != 'false'
+              uses: actions/checkout@v7
+            - if: needs.changes.outputs.run != 'false'
+              name: Run cargo-deny
               uses: EmbarkStudios/cargo-deny-action@v2
               with:
                   command: check ${{ matrix.checks }}

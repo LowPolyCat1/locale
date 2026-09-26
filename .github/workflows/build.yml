@@ -10,23 +10,56 @@ env:
     CARGO_TERM_COLOR: always
 
 jobs:
+    # Only pull requests are filtered; pushes to master always run everything.
+    # The gate is job-level (not `on.pull_request.paths`) so that skipped required
+    # checks are still reported as successful. If the filter itself fails, `run` is
+    # empty and everything runs.
+    changes:
+        runs-on: ubuntu-latest
+        permissions:
+            pull-requests: read
+        outputs:
+            run: ${{ github.event_name != 'pull_request' || steps.filter.outputs.run == 'true' }}
+        steps:
+            - uses: dorny/paths-filter@v3
+              id: filter
+              if: github.event_name == 'pull_request'
+              with:
+                  filters: |
+                      run:
+                          - '**/*.rs'
+                          - '**/Cargo.toml'
+                          - 'Cargo.lock'
+                          - '.github/workflows/build.yml'
+
     build:
+        # Matrix jobs can't be skipped with a job-level `if`: GitHub then reports a single
+        # unexpanded check instead of one per matrix entry, so the required per-entry checks
+        # would never be reported. The steps are skipped instead, and only the stable
+        # entries (the required checks) are started.
+        needs: changes
+        if: ${{ !cancelled() }}
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
                 os: [ubuntu-latest, windows-latest, macos-latest]
-                toolchain: [stable, beta, nightly]
+                toolchain: ${{ fromJSON(needs.changes.outputs.run != 'false' && '["stable", "beta", "nightly"]' || '["stable"]') }}
 
         permissions:
             contents: read
 
         steps:
-            - uses: actions/checkout@v7
-            - name: Set up Rust
+            - if: needs.changes.outputs.run != 'false'
+              uses: actions/checkout@v7
+            - if: needs.changes.outputs.run != 'false'
+              name: Set up Rust
               run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
-            - name: Build
+            - if: needs.changes.outputs.run != 'false'
+              name: Build
               run: cargo build --verbose
-            - name: Run tests
+            - if: needs.changes.outputs.run != 'false'
+              name: Run tests
               run: cargo test --verbose
-            - name: Build release
+            - if: needs.changes.outputs.run != 'false'
+              name: Build release
               run: cargo build --verbose --release
