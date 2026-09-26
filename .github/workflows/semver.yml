@@ -29,6 +29,9 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+          # Otherwise checkout's GITHUB_TOKEN header would override the bot token
+          # on push (it lives in an included config file, so it can't be unset).
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -39,10 +42,14 @@ jobs:
       - name: Merge base branch into PR head
         id: base
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch --no-tags "${{ github.server_url }}/${{ github.repository }}" \
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c "http.extraheader=AUTHORIZATION: basic $auth" \
+            fetch --no-tags "${{ github.server_url }}/${{ github.repository }}" \
             "+refs/heads/$BASE_REF:refs/remotes/upstream/$BASE_REF"
           echo "sha=$(git rev-parse "upstream/$BASE_REF")" >> "$GITHUB_OUTPUT"
           if ! git merge --no-edit "upstream/$BASE_REF"; then
@@ -102,6 +109,5 @@ jobs:
           git commit -m "chore: bump locale-rs to $REQUIRED ($LEVEL)"
           # Push as the bot app (allowed on cldr-bump/*) instead of GITHUB_TOKEN so
           # CI runs on the new commit.
-          git config --unset-all "http.${{ github.server_url }}/.extraheader" || true
           git push "https://x-access-token:${PUSH_TOKEN}@${GITHUB_SERVER_URL#https://}/${{ github.repository }}.git" "HEAD:refs/heads/$HEAD_REF"
           echo "::notice::Pushed version bump to $REQUIRED; checks will re-run on the new commit."
